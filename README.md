@@ -1,4 +1,4 @@
-# GF(p) Benchmarks
+# Experimenting with Finite Fields and Compilers
 
 I have been experimenting with including the ASM written for the SQIsign C implementation into a Rust finite field type, and although the finite field performs much better at a very low level, the magic of the Rust compiler seems to have a hard time optimising complex operations (like 2D isogeny chains) and
 the finite field made with the fp2 crate macro seems to be the fastest option.
@@ -7,7 +7,7 @@ There are two core finite fields in GF(p). `FpGen` is made with the `fp2::define
 
 Then, within `GF5_248` we have either a native implementation or a implementation which directly calls `fp_asm_` methods compiled from the assembly in the SQIsign submission.
 
-## Benchmarks
+## GF(p) Benchmarks
 
 Benchmarks are done by counting clock cycles with the following function:
 
@@ -55,3 +55,33 @@ For my use case, I am not computing finite field arithmetic in vacuum, so there'
 |---|---|---|---|
 | No flags | 9,231,319 | **3,627,533** | 4,343,623 |
 | target-cpu=native | **2,951,955** | 4,088,350 | **2,847,057** |
+
+## GF(p^2) Benchmarks
+
+A similar story happens for GF(p^2)
+
+```
+Using generated GF(p)
+
+GF(p^2) mul:                 159.25  (58)
+GF(p^2) square:              112.39  (64)
+GF(p^2) 248-chain:       8,911,853.00  (206)
+```
+
+```
+Benchmarking SQIsign impl with asm
+
+GF(p^2) mul:                 147.55  (156)
+GF(p^2) square:               98.36  (106)
+GF(p^2) 248-chain:      10,577,974.60  (224)
+```
+
+```
+Benchmarking SQIsign impl without asm
+
+GF(p^2) mul:                 164.66  (59)
+GF(p^2) square:              113.94  (212)
+GF(p^2) 248-chain:       9,567,945.80  (220)
+```
+
+We find that the ASM single operations are the fastest (just) but LLVM is able to do more magic for long computations, like the isogeny chain
