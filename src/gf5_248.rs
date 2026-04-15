@@ -32,6 +32,7 @@ impl GF5_248 {
     pub const ENCODED_LENGTH: usize = 32;
     pub const N: usize = 4;
     pub const BIT_LENGTH: usize = 251;
+    pub const SUM_OF_PRODUCTS_ADDITIONAL_SUB: bool = false;
 
     // Modulus q in base 2^64 (low-to-high order).
     pub const MODULUS: [u64; 4] = [

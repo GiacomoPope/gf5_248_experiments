@@ -1,6 +1,9 @@
 #[allow(unused)]
-macro_rules! define_fp_bench {
+macro_rules! define_fp2_bench {
     ($Fp:ty, $label:expr) => {
+        #[allow(unused)]
+        use fp2::traits::Fq as _;
+
         #[cfg(target_arch = "x86_64")]
         pub fn core_cycles() -> u64 {
             use core::arch::x86_64::{_mm_lfence, _rdtsc};
@@ -33,7 +36,7 @@ macro_rules! define_fp_bench {
             ThetaPoint::new(&x, &y, &z, &t)
         }
 
-        fn bench_fp_add() {
+        fn bench_fp2_add() {
             let mut x = mkfp();
             let mut y = mkfp();
             let mut tt = [0; 10];
@@ -52,13 +55,13 @@ macro_rules! define_fp_bench {
             }
             tt.sort();
             println!(
-                "GF(p) add:            {:13.2}  ({})",
+                "GF(p^2) add:          {:13.2}  ({})",
                 (tt[4] as f64) / 6000.0,
                 x.encode()[0]
             );
         }
 
-        fn bench_fp_sub() {
+        fn bench_fp2_sub() {
             let mut x = mkfp();
             let mut y = mkfp();
             let mut tt = [0; 10];
@@ -77,13 +80,13 @@ macro_rules! define_fp_bench {
             }
             tt.sort();
             println!(
-                "GF(p) sub:            {:13.2}  ({})",
+                "GF(p^2) sub:          {:13.2}  ({})",
                 (tt[4] as f64) / 6000.0,
                 x.encode()[0]
             );
         }
 
-        fn bench_fp_mul_small() {
+        fn bench_fp2_mul_small() {
             let mut x = mkfp();
             let mut tt = [0; 10];
             for i in 0..10 {
@@ -102,13 +105,13 @@ macro_rules! define_fp_bench {
             }
             tt.sort();
             println!(
-                "GF(p) mul_small:      {:13.2}  ({})",
+                "GF(p^2) mul_small:    {:13.2}  ({})",
                 (tt[4] as f64) / 6000.0,
                 x.encode()[0]
             );
         }
 
-        fn bench_fp_mul() {
+        fn bench_fp2_mul() {
             let mut x = mkfp();
             let mut y = mkfp();
             let mut tt = [0; 10];
@@ -127,13 +130,13 @@ macro_rules! define_fp_bench {
             }
             tt.sort();
             println!(
-                "GF(p) mul:            {:13.2}  ({})",
+                "GF(p^2) mul:          {:13.2}  ({})",
                 (tt[4] as f64) / 6000.0,
                 x.encode()[0]
             );
         }
 
-        fn bench_fp_square() {
+        fn bench_fp2_square() {
             let mut x = mkfp();
             let mut tt = [0; 10];
             for i in 0..10 {
@@ -151,69 +154,13 @@ macro_rules! define_fp_bench {
             }
             tt.sort();
             println!(
-                "GF(p) square:         {:13.2}  ({})",
+                "GF(p^2) square:       {:13.2}  ({})",
                 (tt[4] as f64) / 6000.0,
                 x.encode()[0]
             );
         }
 
-        fn bench_sop_mul() {
-            let mut x = mkfp();
-            let mut y = mkfp();
-            let mut z = mkfp();
-            let mut t = mkfp();
-
-            let mut tt = [0; 10];
-            for i in 0..10 {
-                let begin = core_cycles();
-                for _ in 0..1000 {
-                    x = <$Fp>::sum_of_products(&x, &y, &z, &t);
-                    y = <$Fp>::sum_of_products(&x, &y, &z, &t);
-                    z = <$Fp>::sum_of_products(&x, &y, &z, &t);
-                    t = <$Fp>::sum_of_products(&x, &y, &z, &t);
-                    x = <$Fp>::sum_of_products(&x, &y, &z, &t);
-                    y = <$Fp>::sum_of_products(&x, &y, &z, &t);
-                }
-                let end = core_cycles();
-                tt[i] = end.wrapping_sub(begin);
-            }
-            tt.sort();
-            println!(
-                "GF(p) sop:            {:13.2}  ({})",
-                (tt[4] as f64) / 6000.0,
-                x.encode()[0]
-            );
-        }
-
-        fn bench_dop_mul() {
-            let mut x = mkfp();
-            let mut y = mkfp();
-            let mut z = mkfp();
-            let mut t = mkfp();
-
-            let mut tt = [0; 10];
-            for i in 0..10 {
-                let begin = core_cycles();
-                for _ in 0..1000 {
-                    x = <$Fp>::difference_of_products(&x, &y, &z, &t);
-                    y = <$Fp>::difference_of_products(&x, &y, &z, &t);
-                    z = <$Fp>::difference_of_products(&x, &y, &z, &t);
-                    t = <$Fp>::difference_of_products(&x, &y, &z, &t);
-                    x = <$Fp>::difference_of_products(&x, &y, &z, &t);
-                    y = <$Fp>::difference_of_products(&x, &y, &z, &t);
-                }
-                let end = core_cycles();
-                tt[i] = end.wrapping_sub(begin);
-            }
-            tt.sort();
-            println!(
-                "GF(p) sop:            {:13.2}  ({})",
-                (tt[4] as f64) / 6000.0,
-                x.encode()[0]
-            );
-        }
-
-        fn bench_fp_div() {
+        fn bench_fp2_div() {
             let mut x = mkfp();
             let mut y = mkfp();
             let mut tt = [0; 10];
@@ -232,13 +179,13 @@ macro_rules! define_fp_bench {
             }
             tt.sort();
             println!(
-                "GF(p) div:            {:13.2}  ({})",
+                "GF(p^2) div:          {:13.2}  ({})",
                 (tt[4] as f64) / 600.0,
                 x.encode()[0]
             );
         }
 
-        fn bench_fp_legendre() {
+        fn bench_fp2_legendre() {
             let mut x = mkfp();
             let mut tt = [0; 10];
             for i in 0..10 {
@@ -253,13 +200,13 @@ macro_rules! define_fp_bench {
             }
             tt.sort();
             println!(
-                "GF(p) legendre:       {:13.2}  ({})",
+                "GF(p^2) legendre:     {:13.2}  ({})",
                 (tt[4] as f64) / 600.0,
                 x.encode()[0]
             );
         }
 
-        fn bench_fp_sqrt() {
+        fn bench_fp2_sqrt() {
             let mut x = mkfp();
             let mut tt = [0; 10];
             for i in 0..10 {
@@ -274,13 +221,13 @@ macro_rules! define_fp_bench {
             }
             tt.sort();
             println!(
-                "GF(p) sqrt:           {:13.2}  ({})",
+                "GF(p^2) sqrt:         {:13.2}  ({})",
                 (tt[4] as f64) / 20.0,
                 x.encode()[0]
             );
         }
 
-        fn bench_isogeny_chain() {
+        fn bench_fp2_isogeny_chain() {
             let null = mkpt();
             let mut oa = ThetaStructure::new_from_point(&null);
             let k1 = mkpt();
@@ -297,29 +244,27 @@ macro_rules! define_fp_bench {
             }
             tt.sort();
             println!(
-                "GF(p) 248-chain:      {:13.2}  ({})",
+                "GF(p^2) 248-chain:    {:13.2}  ({})",
                 (tt[4] as f64) / 20.0,
                 oa.null_point().coords().0.encode()[0]
             );
         }
 
-        fn main() {
+        pub fn run_benchmarks() {
             println!("{}", $label);
-            println!("### len(p) = {}", <$Fp>::BIT_LENGTH);
-            bench_fp_add();
-            bench_fp_sub();
-            bench_fp_mul_small();
-            bench_fp_mul();
-            bench_fp_square();
-            bench_sop_mul();
-            bench_dop_mul();
-            bench_fp_div();
-            bench_fp_legendre();
-            bench_fp_sqrt();
-            bench_isogeny_chain();
+            println!("### len(p) = {}", <$Fp>::CHAR_BIT_LENGTH);
+            bench_fp2_add();
+            bench_fp2_sub();
+            bench_fp2_mul_small();
+            bench_fp2_mul();
+            bench_fp2_square();
+            bench_fp2_div();
+            bench_fp2_legendre();
+            bench_fp2_sqrt();
+            bench_fp2_isogeny_chain();
         }
     };
 } // End of macro: define_fp_bench
 
 #[allow(unused)]
-pub(crate) use define_fp_bench;
+pub(crate) use define_fp2_bench;
