@@ -10,6 +10,8 @@ unsafe extern "C" {
     unsafe fn fp_add_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_sub_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_mul_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
+    unsafe fn fp_sop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
+    unsafe fn fp_dop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
 }
 
 #[repr(C)]
@@ -779,6 +781,155 @@ impl GF5_248 {
         let mut r = self;
         r.set_n_square(n);
         r
+    }
+
+    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[inline(always)]
+    fn sum_of_products_u64(a1: u64, b1: u64, a2: u64, b2: u64, c: u8) -> (u64, u64, u8) {
+        let (lo1, hi1) = umull(a1, b1);
+        let (lo2, hi2) = umull(a2, b2);
+        let (lo, cc) = addcarry_u64(lo1, lo2, c);
+        let (hi, tt) = addcarry_u64(hi1, hi2, cc);
+
+        (lo, hi, tt)
+    }
+
+    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+    #[inline(always)]
+    pub fn sum_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
+        let mut u = Self::ZERO;
+        let a = [*a2, *a1];
+        let b = [*b1, *b2];
+        unsafe { fp_sop_asm(&mut u, a.as_ptr(), b.as_ptr()) }
+        u
+    }
+
+    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[inline(always)]
+    pub fn sum_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
+        let (a10, a11, a12, a13) = (a1.0[0], a1.0[1], a1.0[2], a1.0[3]);
+        let (b10, b11, b12, b13) = (b1.0[0], b1.0[1], b1.0[2], b1.0[3]);
+        let (a20, a21, a22, a23) = (a2.0[0], a2.0[1], a2.0[2], a2.0[3]);
+        let (b20, b21, b22, b23) = (b2.0[0], b2.0[1], b2.0[2], b2.0[3]);
+
+        // Product: a1 * b1 + a2 * b2 -> 504 bits
+        let (e0, e1, cc) = Self::sum_of_products_u64(a10, b10, a20, b20, 0);
+        let (e2, e3, cc) = Self::sum_of_products_u64(a11, b11, a21, b21, cc);
+        let (e4, e5, cc) = Self::sum_of_products_u64(a12, b12, a22, b22, cc);
+        let (e6, e7, _) = Self::sum_of_products_u64(a13, b13, a23, b23, cc);
+
+        let (lo, hi, cc1) = Self::sum_of_products_u64(a10, b11, a20, b21, 0);
+        let (e1, cc) = addcarry_u64(e1, lo, 0);
+        let (e2, cc) = addcarry_u64(e2, hi, cc);
+        let (lo, hi, cc1) = Self::sum_of_products_u64(a10, b13, a20, b23, cc1);
+        let (e3, cc) = addcarry_u64(e3, lo, cc);
+        let (e4, cc) = addcarry_u64(e4, hi, cc);
+        let (lo, hi, cc1) = Self::sum_of_products_u64(a12, b13, a22, b23, cc1);
+        let (e5, cc) = addcarry_u64(e5, lo, cc);
+        let (e6, cc) = addcarry_u64(e6, hi, cc);
+        let (e7, _) = addcarry_u64(e7, cc1 as u64, cc);
+
+        let (lo, hi, cc1) = Self::sum_of_products_u64(a11, b10, a21, b20, 0);
+        let (e1, cc) = addcarry_u64(e1, lo, 0);
+        let (e2, cc) = addcarry_u64(e2, hi, cc);
+        let (lo, hi, cc1) = Self::sum_of_products_u64(a13, b10, a23, b20, cc1);
+        let (e3, cc) = addcarry_u64(e3, lo, cc);
+        let (e4, cc) = addcarry_u64(e4, hi, cc);
+        let (lo, hi, cc1) = Self::sum_of_products_u64(a13, b12, a23, b22, cc1);
+        let (e5, cc) = addcarry_u64(e5, lo, cc);
+        let (e6, cc) = addcarry_u64(e6, hi, cc);
+        let (e7, _) = addcarry_u64(e7, cc1 as u64, cc);
+
+        let (lo, hi, cc1) = Self::sum_of_products_u64(a10, b12, a20, b22, 0);
+        let (e2, cc) = addcarry_u64(e2, lo, 0);
+        let (e3, cc) = addcarry_u64(e3, hi, cc);
+        let (lo, hi, cc1) = Self::sum_of_products_u64(a11, b13, a21, b23, cc1);
+        let (e4, cc) = addcarry_u64(e4, lo, cc);
+        let (e5, cc) = addcarry_u64(e5, hi, cc);
+        let (e6, cc) = addcarry_u64(e6, cc1 as u64, cc);
+        let (e7, _) = addcarry_u64(e7, 0, cc);
+
+        let (lo, hi, cc1) = Self::sum_of_products_u64(a12, b10, a22, b20, 0);
+        let (e2, cc) = addcarry_u64(e2, lo, 0);
+        let (e3, cc) = addcarry_u64(e3, hi, cc);
+        let (lo, hi, cc1) = Self::sum_of_products_u64(a13, b11, a23, b21, cc1);
+        let (e4, cc) = addcarry_u64(e4, lo, cc);
+        let (e5, cc) = addcarry_u64(e5, hi, cc);
+        let (e6, cc) = addcarry_u64(e6, cc1 as u64, cc);
+        let (e7, _) = addcarry_u64(e7, 0, cc);
+
+        let (lo1, hi1, cc1) = Self::sum_of_products_u64(a11, b12, a21, b22, 0);
+        let (lo2, hi2, cc2) = Self::sum_of_products_u64(a12, b11, a22, b21, 0);
+        let (lo, cc) = addcarry_u64(lo1, lo2, 0);
+        let (hi, tt) = addcarry_u64(hi1, hi2, cc);
+        let (e3, cc) = addcarry_u64(e3, lo, 0);
+        let (e4, cc) = addcarry_u64(e4, hi, cc);
+        let (e5, cc) = addcarry_u64(e5, tt as u64, cc);
+        let (e6, cc) = addcarry_u64(e6, 0, cc);
+        let (e7, _) = addcarry_u64(e7, 0, cc);
+
+        // Add in the additional carries from sum_of_products_u64
+        let (e5, cc) = addcarry_u64(e5, cc1 as u64, cc2);
+        let (e6, cc) = addcarry_u64(e6, 0, cc);
+        let (e7, _) = addcarry_u64(e7, 0, cc);
+
+        // Montgomery reduction, see set_mul
+        let f0 = e0;
+        let f1 = e1;
+        let f2 = e2;
+        let f3 = e3.wrapping_add(e0.wrapping_mul(5) << 56);
+
+        // Compute g = f*q.
+        let (g3, hi) = umull(f0, 5u64 << 56);
+        let (g4, hi) = umull_add(f1, 5u64 << 56, hi);
+        let (g5, hi) = umull_add(f2, 5u64 << 56, hi);
+        let (g6, g7) = umull_add(f3, 5u64 << 56, hi);
+        let (g0, cc) = subborrow_u64(0, f0, 0);
+        let (g1, cc) = subborrow_u64(0, f1, cc);
+        let (g2, cc) = subborrow_u64(0, f2, cc);
+        let (g3, cc) = subborrow_u64(g3, f3, cc);
+        let (g4, cc) = subborrow_u64(g4, 0, cc);
+        let (g5, cc) = subborrow_u64(g5, 0, cc);
+        let (g6, cc) = subborrow_u64(g6, 0, cc);
+        let (g7, _) = subborrow_u64(g7, 0, cc);
+
+        // We add g = f*q to e0..e7. Since e0..e7 < 2^504, and f < 2^256,
+        // we know that the result is not less than
+        // 2^502 + 2^256*5*2^248 < 6*2^504; it is also a multiple of
+        // 2^256. After dividing by 2^256, we get a value which is
+        // less than 6*2^248, i.e. already in our proper range.
+        let (_, cc) = addcarry_u64(e0, g0, 0);
+        let (_, cc) = addcarry_u64(e1, g1, cc);
+        let (_, cc) = addcarry_u64(e2, g2, cc);
+        let (_, cc) = addcarry_u64(e3, g3, cc);
+        let (d0, cc) = addcarry_u64(e4, g4, cc);
+        let (d1, cc) = addcarry_u64(e5, g5, cc);
+        let (d2, cc) = addcarry_u64(e6, g6, cc);
+        let (d3, _) = addcarry_u64(e7, g7, cc);
+
+        let mut r = Self::ZERO;
+        r.0[0] = d0;
+        r.0[1] = d1;
+        r.0[2] = d2;
+        r.0[3] = d3;
+        r
+    }
+
+    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+    #[inline(always)]
+    pub fn difference_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
+        let mut u = Self::ZERO;
+        let a = [*a1, *a2];
+        let b = [*b1, *b2];
+        unsafe { fp_dop_asm(&mut u, a.as_ptr(), b.as_ptr()) }
+        u
+    }
+
+    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[inline(always)]
+    pub fn difference_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
+        let b2_minus = b2.neg();
+        Self::sum_of_products(a1, b1, a2, &b2_minus)
     }
 
     // Ensure that the internal encoding of this value is in the 0..q-1
@@ -2385,6 +2536,18 @@ mod tests {
         let zc = BigInt::from_bytes_le(Sign::Plus, &vc);
         let zd = (&za * &za) % &zp;
         assert!(zc == zd);
+
+        let c = a * b;
+        let d = a * b;
+        let e = a * c + b * d;
+        let ee = GF5_248::sum_of_products(&a, &c, &b, &d);
+        assert!(e.equals(&ee) == u32::MAX);
+
+        let c = a * b;
+        let d = a * b;
+        let e = a * c - b * d;
+        let ee = GF5_248::difference_of_products(&a, &c, &b, &d);
+        assert!(e.equals(&ee) == u32::MAX);
 
         let (e, cc) = GF5_248::decode(va);
         if cc != 0 {

@@ -199,3 +199,167 @@ fp_mul_asm:
     pop    r13
     pop    r12
     ret
+
+//***********************************************************************
+//  Multiplication in GF(p^2), non-complex part
+//  Operation: c [rdi] = a0 x b0 - a1 x b1
+//  Inputs: a = [a1, a0] stored in [rsi] 
+//          b = [b1, b0] stored in [rdx] 
+//  Output: c stored in [rdi]
+//***********************************************************************
+#ifdef __APPLE__
+.global _fp_dop_asm
+_fp_dop_asm:
+#else
+.global fp_dop_asm
+fp_dop_asm:
+#endif 
+    push   r12 
+    push   r13 
+    push   r14   
+    mov    rcx, rdx
+	
+	// [rdi0:3] <- 2p - b1
+	mov    r8, [rip+p2] 
+	mov    r9, [rip+p2+8] 
+	mov    r10, r9
+	mov    r11, [rip+p2+24] 
+	mov    rax, [rcx+32]
+	mov    rdx, [rcx+40]
+	sub    r8, rax
+	sbb    r9, rdx
+	mov    rax, [rcx+48]
+	mov    rdx, [rcx+56]
+	sbb    r10, rax
+	sbb    r11, rdx
+	mov    [rdi], r8
+	mov    [rdi+8], r9
+	mov    [rdi+16], r10
+	mov    [rdi+24], r11
+    
+    // [r8:r12] <- z = a0 x b00 - a1 x b10
+    mov    rdx, [rcx]
+    mulx   r9, r8, [rsi]         
+    xor    rax, rax
+    mulx   r10, r11, [rsi+8]
+    adox   r9, r11        
+    mulx   r11, r12, [rsi+16] 
+    adox   r10, r12        
+    mulx   r12, r13, [rsi+24]
+    adox   r11, r13  
+    adox   r12, rax
+           
+    mov    rdx, [rdi]    
+    MULADD64x256 [rsi+32], r8, r9, r10, r11, r12, r13, r14, rax
+    // [r9:r12] <- z = (z0 x p_plus_1 + z)/2^64
+    mov    rdx, r8                 // rdx <- z0 
+    MULADD64x64 [rip+p_plus_1+24], r9, r10, r11, r12, r13, r14
+    
+    // [r9:r12, r8] <- z = a0 x b01 - a1 x b11 + z 
+    mov    rdx, [rcx+8]
+    MULADD64x256 [rsi], r9, r10, r11, r12, r8, r13, r14, r8
+    mov    rdx, [rdi+8]    
+    MULADD64x256 [rsi+32], r9, r10, r11, r12, r8, r13, r14, rax
+    // [r10:r12, r8] <- z = (z0 x p_plus_1 + z)/2^64
+    mov    rdx, r9                 // rdx <- z0 
+    MULADD64x64 [rip+p_plus_1+24], r10, r11, r12, r8, r13, r14
+    
+    // [r10:r12, r8:r9] <- z = a0 x b02 - a1 x b12 + z 
+    mov    rdx, [rcx+16]
+    MULADD64x256 [rsi], r10, r11, r12, r8, r9, r13, r14, r9
+    mov    rdx, [rdi+16]    
+    MULADD64x256 [rsi+32], r10, r11, r12, r8, r9, r13, r14, rax
+    // [r11:r12, r8:r9] <- z = (z0 x p_plus_1 + z)/2^64
+    mov    rdx, r10                // rdx <- z0 
+    MULADD64x64 [rip+p_plus_1+24], r11, r12, r8, r9, r13, r14
+    
+    // [r11:r12, r8:r10] <- z = a0 x b03 - a1 x b13 + z 
+    mov    rdx, [rcx+24]
+    MULADD64x256 [rsi], r11, r12, r8, r9, r10, r13, r14, r10
+    mov    rdx, [rdi+24]    
+    MULADD64x256 [rsi+32], r11, r12, r8, r9, r10, r13, r14, rax
+    // [r12, r8:r10] <- z = (z0 x p_plus_1 + z)/2^64
+    mov    rdx, r11                // rdx <- z0 
+    MULADD64x64 [rip+p_plus_1+24], r12, r8, r9, r10, r13, r14
+
+    mov    [rdi], r12          
+    mov    [rdi+8], r8         
+    mov    [rdi+16], r9         
+    mov    [rdi+24], r10 
+    pop    r14
+    pop    r13
+    pop    r12
+    ret
+  
+//***********************************************************************
+//  Multiplication in GF(p^2), complex part
+//  Operation: c [rdi] = a0 x b1 + a1 x b0
+//  Inputs: a = [a1, a0] stored in [rsi] 
+//          b = [b1, b0] stored in [rdx] 
+//  Output: c stored in [rdi]
+//***********************************************************************
+#ifdef __APPLE__
+.global _fp_sop_asm
+_fp_sop_asm:
+#else
+.global fp_sop_asm
+fp_sop_asm:
+#endif 
+    push   r12 
+    push   r13 
+    push   r14   
+    mov    rcx, rdx
+    
+    // [r8:r12] <- z = a0 x b10 + a1 x b00
+    mov    rdx, [rcx+32]
+    mulx   r9, r8, [rsi]         
+    xor    rax, rax
+    mulx   r10, r11, [rsi+8]
+    adox   r9, r11        
+    mulx   r11, r12, [rsi+16] 
+    adox   r10, r12        
+    mulx   r12, r13, [rsi+24]
+    adox   r11, r13  
+    adox   r12, rax
+           
+    mov    rdx, [rcx]    
+    MULADD64x256 [rsi+32], r8, r9, r10, r11, r12, r13, r14, rax
+    // [r9:r12] <- z = (z0 x p_plus_1 + z)/2^64
+    mov    rdx, r8                 // rdx <- z0 
+    MULADD64x64 [rip+p_plus_1+24], r9, r10, r11, r12, r13, r14
+    
+    // [r9:r12, r8] <- z = a0 x b01 - a1 x b11 + z 
+    mov    rdx, [rcx+40]
+    MULADD64x256 [rsi], r9, r10, r11, r12, r8, r13, r14, r8
+    mov    rdx, [rcx+8]    
+    MULADD64x256 [rsi+32], r9, r10, r11, r12, r8, r13, r14, rax
+    // [r10:r12, r8] <- z = (z0 x p_plus_1 + z)/2^64
+    mov    rdx, r9                 // rdx <- z0 
+    MULADD64x64 [rip+p_plus_1+24], r10, r11, r12, r8, r13, r14
+    
+    // [r10:r12, r8:r9] <- z = a0 x b02 - a1 x b12 + z 
+    mov    rdx, [rcx+48]
+    MULADD64x256 [rsi], r10, r11, r12, r8, r9, r13, r14, r9
+    mov    rdx, [rcx+16]    
+    MULADD64x256 [rsi+32], r10, r11, r12, r8, r9, r13, r14, rax
+    // [r11:r12, r8:r9] <- z = (z0 x p_plus_1 + z)/2^64
+    mov    rdx, r10                // rdx <- z0 
+    MULADD64x64 [rip+p_plus_1+24], r11, r12, r8, r9, r13, r14
+    
+    // [r11:r12, r8:r10] <- z = a0 x b03 - a1 x b13 + z 
+    mov    rdx, [rcx+56]
+    MULADD64x256 [rsi], r11, r12, r8, r9, r10, r13, r14, r10
+    mov    rdx, [rcx+24]    
+    MULADD64x256 [rsi+32], r11, r12, r8, r9, r10, r13, r14, rax
+    // [r12, r8:r10] <- z = (z0 x p_plus_1 + z)/2^64
+    mov    rdx, r11                // rdx <- z0 
+    MULADD64x64 [rip+p_plus_1+24], r12, r8, r9, r10, r13, r14
+
+    mov    [rdi], r12          
+    mov    [rdi+8], r8         
+    mov    [rdi+16], r9         
+    mov    [rdi+24], r10 
+    pop    r14
+    pop    r13
+    pop    r12
+    ret

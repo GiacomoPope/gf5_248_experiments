@@ -157,6 +157,62 @@ macro_rules! define_fp_bench {
             );
         }
 
+        fn bench_sop_mul() {
+            let mut x = mkfp();
+            let mut y = mkfp();
+            let mut z = mkfp();
+            let mut t = mkfp();
+
+            let mut tt = [0; 10];
+            for i in 0..10 {
+                let begin = core_cycles();
+                for _ in 0..1000 {
+                    x = <$Fp>::sum_of_products(&x, &y, &z, &t);
+                    y = <$Fp>::sum_of_products(&x, &y, &z, &t);
+                    z = <$Fp>::sum_of_products(&x, &y, &z, &t);
+                    t = <$Fp>::sum_of_products(&x, &y, &z, &t);
+                    x = <$Fp>::sum_of_products(&x, &y, &z, &t);
+                    y = <$Fp>::sum_of_products(&x, &y, &z, &t);
+                }
+                let end = core_cycles();
+                tt[i] = end.wrapping_sub(begin);
+            }
+            tt.sort();
+            println!(
+                "GF(p) sop:            {:13.2}  ({})",
+                (tt[4] as f64) / 6000.0,
+                x.encode()[0]
+            );
+        }
+
+        fn bench_dop_mul() {
+            let mut x = mkfp();
+            let mut y = mkfp();
+            let mut z = mkfp();
+            let mut t = mkfp();
+
+            let mut tt = [0; 10];
+            for i in 0..10 {
+                let begin = core_cycles();
+                for _ in 0..1000 {
+                    x = <$Fp>::difference_of_products(&x, &y, &z, &t);
+                    y = <$Fp>::difference_of_products(&x, &y, &z, &t);
+                    z = <$Fp>::difference_of_products(&x, &y, &z, &t);
+                    t = <$Fp>::difference_of_products(&x, &y, &z, &t);
+                    x = <$Fp>::difference_of_products(&x, &y, &z, &t);
+                    y = <$Fp>::difference_of_products(&x, &y, &z, &t);
+                }
+                let end = core_cycles();
+                tt[i] = end.wrapping_sub(begin);
+            }
+            tt.sort();
+            println!(
+                "GF(p) sop:            {:13.2}  ({})",
+                (tt[4] as f64) / 6000.0,
+                x.encode()[0]
+            );
+        }
+
         fn bench_fp_div() {
             let mut x = mkfp();
             let mut y = mkfp();
@@ -255,6 +311,8 @@ macro_rules! define_fp_bench {
             bench_fp_mul_small();
             bench_fp_mul();
             bench_fp_square();
+            bench_sop_mul();
+            bench_dop_mul();
             bench_fp_div();
             bench_fp_legendre();
             bench_fp_sqrt();
