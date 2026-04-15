@@ -1,0 +1,28 @@
+[package]
+name = "gf5_248"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+asm = []
+
+[dependencies]
+fp2 = "0.4.2"
+rand_core = "0.9"
+sha2 = "0.11"
+
+[build-dependencies]
+cc = "1"
+
+[dev-dependencies]
+num-bigint = "0.4.3"
+
+[[bench]]
+name = "bench_fp"
+path = "benches/bench_fp.rs"
+harness = false
+
+[[bench]]
+name = "bench_fp2_crate"
+path = "benches/bench_fp2_crate.rs"
+harness = false
