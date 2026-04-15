@@ -10,6 +10,7 @@ unsafe extern "C" {
     unsafe fn fp_add_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_sub_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_mul_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
+    unsafe fn fp_sqr_asm(dst: *mut GF5_248, a: *const GF5_248);
     unsafe fn fp_sop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_dop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp2_sqr_re_asm(dst: *mut GF5_248, a: *const GF5_248);
@@ -675,7 +676,7 @@ impl GF5_248 {
     #[cfg(all(target_arch = "x86_64", feature = "asm"))]
     #[inline(always)]
     pub fn set_square(&mut self) {
-        unsafe { fp_mul_asm(self, self, self) }
+        unsafe { fp_sqr_asm(self, self) }
     }
 
     #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]

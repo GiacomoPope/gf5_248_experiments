@@ -200,6 +200,19 @@ fp_mul_asm:
     pop    r12
     ret
 
+#ifdef __APPLE__
+.global _fp_sqr_asm
+_fp_sqr_asm:
+    mov rdx, rsi
+    jmp _fp_mul_asm
+#else
+.global fp_sqr_asm
+fp_sqr_asm:
+    mov rdx, rsi
+    jmp fp_mul_asm
+#endif
+
+
 //***********************************************************************
 //  Multiplication in GF(p^2), non-complex part
 //  Operation: c [rdi] = a0 x b0 - a1 x b1
