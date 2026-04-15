@@ -12,6 +12,8 @@ unsafe extern "C" {
     unsafe fn fp_mul_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_sop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_dop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
+    unsafe fn fp2_sqr_re_asm(dst: *mut GF5_248, a: *const GF5_248);
+    unsafe fn fp2_sqr_im_asm(dst: *mut GF5_248, a: *const GF5_248);
 }
 
 #[repr(C)]
@@ -931,6 +933,38 @@ impl GF5_248 {
     pub fn difference_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
         let b2_minus = b2.neg();
         Self::sum_of_products(a1, b1, a2, &b2_minus)
+    }
+
+    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+    #[inline(always)]
+    pub fn fp2_sq_re(x0: &Self, x1: &Self) -> Self {
+        let mut u = Self::ZERO;
+        let a = [*x0, *x1];
+        unsafe { fp2_sqr_re_asm(&mut u, a.as_ptr()) }
+        u
+    }
+
+    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[inline(always)]
+    // TODO: optimise?
+    pub fn fp2_sq_re(x0: &Self, x1: &Self) -> Self {
+        (x0 - x1) * (x0 + x1)
+    }
+
+    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+    #[inline(always)]
+    pub fn fp2_sq_im(x0: &Self, x1: &Self) -> Self {
+        let mut u = Self::ZERO;
+        let a = [*x0, *x1];
+        unsafe { fp2_sqr_im_asm(&mut u, a.as_ptr()) }
+        u
+    }
+
+    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[inline(always)]
+    // TODO: optimise?
+    pub fn fp2_sq_im(x0: &Self, x1: &Self) -> Self {
+        (x0 * x1).mul2()
     }
 
     // Ensure that the internal encoding of this value is in the 0..q-1

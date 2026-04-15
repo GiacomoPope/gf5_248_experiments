@@ -363,3 +363,125 @@ fp_sop_asm:
     pop    r13
     pop    r12
     ret
+
+//***********************************************************************
+//  Squaring in GF(p^2), non-complex part
+//  Operation: c [rdi] = (a0+a1) x (a0-a1)
+//  Inputs: a = [a1, a0] stored in [rsi] 
+//  Output: c stored in [rdi]
+//***********************************************************************
+#ifdef __APPLE__
+.global _fp2_sqr_re_asm
+_fp2_sqr_re_asm:
+#else
+.global fp2_sqr_re_asm
+fp2_sqr_re_asm:
+#endif  
+    push   r12 
+    push   r13
+
+	// a0 + a1
+	mov    rdx, [rsi]
+	mov    r9, [rsi+8]
+	mov    r10, [rsi+16]
+	mov    r11, [rsi+24]
+	add    rdx, [rsi+32]
+	adc    r9, [rsi+40]
+	adc    r10, [rsi+48]
+	adc    r11, [rsi+56]
+	mov    [rdi], rdx
+	mov    [rdi+8], r9
+	mov    [rdi+16], r10
+	mov    [rdi+24], r11
+	
+	// a0 - a1 + 2p
+	mov    r8, [rsi]
+	mov    r10, [rsi+8]
+	mov    r12, [rsi+16]
+	mov    r13, [rsi+24]
+	sub    r8, [rsi+32]
+	sbb    r10, [rsi+40]
+	sbb    r12, [rsi+48]
+	sbb    r13, [rsi+56]
+	mov    rax, [rip+p2]
+	add    r8, rax   
+	mov    rax, [rip+p2+8]                 
+	adc    r10, rax
+	adc    r12, rax
+	adc    r13, [rip+p2+24]
+	mov    [rdi+32], r8               
+	mov    [rdi+40], r10 
+	mov    [rdi+48], r12 
+	mov    [rdi+56], r13 
+    
+    // [r8:r12] <- z = a00 x a1
+    mulx   r9, r8, r8   
+    xor    rax, rax
+    mulx   r10, r11, r10  
+    adox   r9, r11        
+    mulx   r11, r12, r12  
+    adox   r10, r12        
+    mulx   r12, r13, r13  
+    adox   r11, r13
+    adox   r12, rax 
+
+    FPMUL256x256 [rdi], [rdi+32], r8, r9, r10, r11, r12, r13, rcx
+
+    mov    [rdi], r12          
+    mov    [rdi+8], r8         
+    mov    [rdi+16], r9         
+    mov    [rdi+24], r10
+    pop    r13
+    pop    r12
+    ret
+
+//***********************************************************************
+//  Squaring in GF(p^2), complex part
+//  Operation: c [rdi] = 2a0 x a1
+//  Inputs: a = [a1, a0] stored in [reg_p1] 
+//  Output: c stored in [rdi]
+//***********************************************************************
+#ifdef __APPLE__
+.global _fp2_sqr_im_asm
+_fp2_sqr_im_asm:
+#else
+.global fp2_sqr_im_asm
+fp2_sqr_im_asm:
+#endif   
+    push   r12
+    push   r13 
+	
+	mov    rdx, [rsi]
+	mov    r9, [rsi+8]
+	mov    r10, [rsi+16]
+	mov    r11, [rsi+24]
+	add    rdx, rdx
+	adc    r9, r9
+	adc    r10, r10
+	adc    r11, r11
+	sub    rsp, 32
+	mov    [rsp+8], r9
+	mov    [rsp+16], r10 
+	mov    [rsp+24], r11   
+    
+    // [r8:r12] <- z = a00 x a1
+    mulx   r9, r8, [rsi+32]
+    xor    rax, rax 
+    mulx   r10, r11, [rsi+40]
+    adox   r9, r11        
+    mulx   r11, r12, [rsi+48]
+    adox   r10, r12        
+    mulx   r12, r13, [rsi+56]
+    adox   r11, r13  
+    adox   r12, rax 
+
+	FPMUL256x256 [rsp], [rsi+32], r8, r9, r10, r11, r12, r13, rcx
+	add    rsp, 32 
+
+    mov    [rdi], r12          
+    mov    [rdi+8], r8         
+    mov    [rdi+16], r9         
+    mov    [rdi+24], r10 
+    pop    r13
+    pop    r12
+    ret

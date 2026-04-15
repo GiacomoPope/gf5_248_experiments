@@ -2,7 +2,7 @@ mod fp2_macro;
 use gf5_248::gf5_248::GF5_248;
 
 mod use_sop {
-    fp2::define_fp2_from_type!(
+    gf5_248::define_fp2_from_type!(
         typename = Fp2,
         base_field = super::GF5_248,
         use_sum_of_products = true,
@@ -16,7 +16,7 @@ mod use_sop {
 }
 
 mod dont_use_sop {
-    fp2::define_fp2_from_type!(
+    gf5_248::define_fp2_from_type!(
         typename = Fp2Alt,
         base_field = super::GF5_248,
         use_sum_of_products = false,
