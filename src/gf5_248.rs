@@ -889,9 +889,7 @@ impl GF5_248 {
     //             "mulx r11, r10, [{a}+24]",    // a0*a3 -> e3:e4
     //             "mov  rdx, [{a}+16]",
     //             "mulx r13, r12, [{a}+24]",    // a2*a3 -> e5:e6
-
-    //             "mov  rdx, [{a}]",
-    //             "mulx rcx, rax, [{a}+16]",    // a0*a2
+    //             "mulx rcx, rax, [{a}]",       // a2*a0
     //             "add  r9,  rax",
     //             "adc  r10, rcx",
     //             "mov  rdx, [{a}+8]",
