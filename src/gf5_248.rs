@@ -1158,17 +1158,18 @@ impl GF5_248 {
     }
 
     // TODO: add an inline version of this
-    #[cfg(any(feature = "asm", feature = "asm-inline"))]
-    #[inline(always)]
-    pub fn fp2_sq_im(x0: &Self, x1: &Self) -> Self {
-        let mut u = Self::ZERO;
-        let a = [*x0, *x1];
-        unsafe { fp2_sqr_im_asm(&mut u, a.as_ptr()) }
-        u
-    }
+    // TODO: this has some bug, there's a segfault... Track it down later
+    // #[cfg(any(feature = "asm", feature = "asm-inline"))]
+    // #[inline(always)]
+    // pub fn fp2_sq_im(x0: &Self, x1: &Self) -> Self {
+    //     let mut u = Self::ZERO;
+    //     let a = [*x0, *x1];
+    //     unsafe { fp2_sqr_im_asm(&mut u, a.as_ptr()) }
+    //     u
+    // }
 
-    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
-    #[inline(always)]
+    // #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
+    // #[inline(always)]
     // TODO: optimise?
     pub fn fp2_sq_im(x0: &Self, x1: &Self) -> Self {
         (x0 * x1).mul2()
