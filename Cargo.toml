@@ -19,22 +19,22 @@ cc = "1"
 [dev-dependencies]
 num-bigint = "0.4.3"
 
-# [[bench]]
-# name = "bench_fp"
-# path = "benches/bench_fp.rs"
-# harness = false
+[[bench]]
+name = "bench_fp"
+path = "benches/bench_fp.rs"
+harness = false
 
 [[bench]]
 name = "bench_fp2"
 path = "benches/bench_fp2.rs"
 harness = false
 
-# [[bench]]
-# name = "bench_fp_crate"
-# path = "benches/bench_fp_crate.rs"
-# harness = false
+[[bench]]
+name = "bench_fp_crate"
+path = "benches/bench_fp_crate.rs"
+harness = false
 
-# [[bench]]
-# name = "bench_fp2_crate"
-# path = "benches/bench_fp2_crate.rs"
-# harness = false
+[[bench]]
+name = "bench_fp2_crate"
+path = "benches/bench_fp2_crate.rs"
+harness = false

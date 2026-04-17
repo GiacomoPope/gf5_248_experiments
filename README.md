@@ -22,6 +22,34 @@ We do micro benchmarks of GF(p) arithmetic as well as a dummy (2,2)-isogeny in t
 
 NOTE: If we use ASM for the addition and subtraction, things are MUCH slower for extern calls and I have not experimented yet with inlining the arithmetic.
 
+
+There are three different benchmarks to run.
+
+### Pure Rust
+
+To compare generated generic Fq arithmetic against SQIsign run:
+
+```
+RUSTFLAGS="-C target-cpu=native" cargo bench
+```
+
+### External ASM Calls
+
+To compare generated generic Fq arithmetic using extern calls to ASM run
+
+```
+RUSTFLAGS="-C target-cpu=native" cargo bench
+```
+
+### Inlined ASM Calls
+
+To compare generated generic Fq arithmetic using inlined calls to ASM run
+
+```
+RUSTFLAGS="-C target-cpu=native" cargo bench
+```
+
+
 ## fp2 crate
 
 GF(p) add:                     9.51  (129)
