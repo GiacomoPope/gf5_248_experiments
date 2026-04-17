@@ -8,11 +8,14 @@ mod use_sop {
         use_sum_of_products = true,
     );
 
-    #[cfg(feature = "asm")]
-    super::fp2_macro::define_fp2_bench!(Fp2, "Benchmarking SQIsign impl with asm using SOP");
+    #[cfg(all(target_arch = "x86_64", feature = "asm", not(feature = "asm-inline")))]
+    super::fp2_macro::define_fp2_bench!(Fp2, "Benchmarking SQIsign impl with asm (SOP)");
 
-    #[cfg(not(feature = "asm"))]
-    super::fp2_macro::define_fp2_bench!(Fp2, "Benchmarking SQIsign impl without asm using SOP");
+    #[cfg(all(target_arch = "x86_64", feature = "asm-inline"))]
+    super::fp2_macro::define_fp2_bench!(Fp2, "Benchmarking SQIsign impl with inlined asm (SOP)");
+
+    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
+    super::fp2_macro::define_fp2_bench!(Fp2, "Benchmarking SQIsign impl pure rust (SOP)");
 }
 
 mod dont_use_sop {
@@ -22,11 +25,17 @@ mod dont_use_sop {
         use_sum_of_products = false,
     );
 
-    #[cfg(feature = "asm")]
-    super::fp2_macro::define_fp2_bench!(Fp2Alt, "Benchmarking SQIsign impl with asm no SOP");
+    #[cfg(all(target_arch = "x86_64", feature = "asm", not(feature = "asm-inline")))]
+    super::fp2_macro::define_fp2_bench!(Fp2Alt, "Benchmarking SQIsign impl with asm (no SOP)");
 
-    #[cfg(not(feature = "asm"))]
-    super::fp2_macro::define_fp2_bench!(Fp2Alt, "Benchmarking SQIsign impl without asm no SOP");
+    #[cfg(all(target_arch = "x86_64", feature = "asm-inline"))]
+    super::fp2_macro::define_fp2_bench!(
+        Fp2Alt,
+        "Benchmarking SQIsign impl with inlined asm (no SOP)"
+    );
+
+    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
+    super::fp2_macro::define_fp2_bench!(Fp2Alt, "Benchmarking SQIsign impl pure rust (no SOP)");
 }
 
 fn main() {

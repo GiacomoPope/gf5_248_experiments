@@ -1,13 +1,6 @@
 # Experimenting with Finite Fields and Compilers
 
-I have been experimenting with including the ASM written for the SQIsign C implementation into a Rust finite field type, and although the finite field performs much better at a very low level, the magic of the Rust compiler seems to have a hard time optimising complex operations (like 2D isogeny chains) and
-the finite field made with the fp2 crate macro seems to be the fastest option.
-
-There are two core finite fields in GF(p). `FpGen` is made with the `fp2::define_fp_core` macro. `GF5_248` is a custom type, which is really just the C implementation converted to Rust. (Actually, historically this was written in rust first then converted to C for the SQIsign impl...)
-
-Then, within `GF5_248` we have either a native implementation or a implementation which directly calls `fp_asm_` methods compiled from the assembly in the SQIsign submission.
-
-## GF(p) Benchmarks
+## Benchmarks
 
 Benchmarks are done by counting clock cycles with the following function:
 
@@ -23,65 +16,182 @@ pub fn core_cycles() -> u64 {
 
 So if you're working on a non-x86_64 machine this project wont work for you, sorry.
 
-### No feature flags
+# Benchmarking GF(p) Arithmetic
 
-| Operation | no-asm | asm | fp2 crate |
-|---|---|---|---|
-| add | 13.51 | 16.31 | 9.42 |
-| sub | 13.81 | 14.08 | 7.18 |
-| mul | 161.30 | **30.03** | 56.10 |
-| square | 106.75 | **33.10** | 73.04 |
+We do micro benchmarks of GF(p) arithmetic as well as a dummy (2,2)-isogeny in the theta model of length 2^248. We find that there is rough parity between the GF(p) generated code and the specific code for the SQIsign prime. Using `extern` calls to the GF(p) ASM is much faster, but when the chain is computed the speed up is less than expected. By inlining the ASM things are even faster.
 
-Here, `asm` is the fastest for mul and square, but curiously the hand-written ASM for add and subtract is slower, which could be looked into for the C impl.
+NOTE: If we use ASM for the addition and subtraction, things are MUCH slower for extern calls and I have not experimented yet with inlining the arithmetic.
 
+## fp2 crate
 
-### Including `target-cpu=native`
+GF(p) add:                     9.51  (129)
+GF(p) sub:                     6.97  (56)
+GF(p) mul_small:              48.35  (197)
+GF(p) mul:                    51.79  (99)
+GF(p) square:                 40.18  (129)
+GF(p) sop:                    74.34  (14)
+GF(p) sop:                    74.95  (237)
+GF(p) div:                  7403.86  (208)
+GF(p) legendre:             6675.56  (248)
+GF(p) sqrt:                12234.80  (120)
+GF(p) 248-chain:         2912838.40  (119)
 
-| Operation | no-asm | asm | fp2 crate |
-|---|---|---|---|
-| add | 13.50 | 16.26 | 9.57 |
-| sub | 13.80 | 14.14 | 7.20 |
-| mul | 46.50 | **30.42** | 52.30 |
-| square | 33.07 | 33.14 | 39.78 |
-
-As expected, the performance of the asm implementation is unchanged but the gap between the fields is closed thanks to the use of the available x86_64 intrinsics
-
-### Benchmarking Something Real
-
-For my use case, I am not computing finite field arithmetic in vacuum, so there's a dummy implementation of a long 2D isogeny chain in the theta model. Benchmarking this, we find that the ASM implementation is the slowest option when `target-cpu=native` is enabled.
-
-
-| Build | no-asm | asm | fp2 crate |
-|---|---|---|---|
-| No flags | 9,231,319 | **3,627,533** | 4,343,623 |
-| target-cpu=native | **2,951,955** | 4,088,350 | **2,847,057** |
-
-## GF(p^2) Benchmarks
-
-A similar story happens for GF(p^2)
+## SQIsign (Pure Rust)
 
 ```
-Using generated GF(p)
-
-GF(p^2) mul:                 159.25  (58)
-GF(p^2) square:              112.39  (64)
-GF(p^2) 248-chain:       8,911,853.00  (206)
+GF(p) add:                    13.50  (239)
+GF(p) sub:                    13.81  (103)
+GF(p) mul_small:              29.67  (144)
+GF(p) mul:                    46.77  (249)
+GF(p) square:                 32.74  (117)
+GF(p) sop:                    64.86  (96)
+GF(p) sop:                    67.27  (218)
+GF(p) div:                  7513.46  (134)
+GF(p) legendre:             6680.91  (94)
+GF(p) sqrt:                 8234.80  (189)
+GF(p) 248-chain:         2920229.10  (90)
 ```
 
-```
-Benchmarking SQIsign impl with asm
-
-GF(p^2) mul:                 147.55  (156)
-GF(p^2) square:               98.36  (106)
-GF(p^2) 248-chain:      10,577,974.60  (224)
-```
+## SQIsign (ASM calls with extern)
 
 ```
-Benchmarking SQIsign impl without asm
-
-GF(p^2) mul:                 164.66  (59)
-GF(p^2) square:              113.94  (212)
-GF(p^2) 248-chain:       9,567,945.80  (220)
+GF(p) add:                    13.48  (136)
+GF(p) sub:                    13.83  (39)
+GF(p) mul_small:              30.12  (196)
+GF(p) mul:                    30.42  (83)
+GF(p) square:                 32.52  (97)
+GF(p) sop:                    70.86  (233)
+GF(p) sop:                    75.13  (48)
+GF(p) div:                  7514.84  (223)
+GF(p) legendre:             6692.81  (153)
+GF(p) sqrt:                 8895.30  (71)
+GF(p) 248-chain:         2635559.40  (248)
 ```
 
-We find that the ASM single operations are the fastest (just) but LLVM is able to do more magic for long computations, like the isogeny chain
+## SQIsign (ASM calls with inline `asm!`)
+
+```
+GF(p) add:                    13.50  (244)
+GF(p) sub:                    13.82  (142)
+GF(p) mul_small:              30.10  (167)
+GF(p) mul:                    30.91  (159)
+GF(p) square:                 37.39  (36)
+GF(p) sop:                    71.34  (121)
+GF(p) sop:                    75.90  (79)
+GF(p) div:                  7527.77  (4)
+GF(p) legendre:             6709.99  (140)
+GF(p) sqrt:                 9707.40  (211)
+GF(p) 248-chain:         2363536.90  (214)
+```
+
+# Benchmarking GF(p^2) Arithmetic
+
+## fp2 crate
+
+### Using generic arithmetic
+
+```
+GF(p^2) add:                  16.54  (109)
+GF(p^2) sub:                  12.00  (216)
+GF(p^2) mul_small:            64.00  (139)
+GF(p^2) mul:                 171.51  (110)
+GF(p^2) square:              111.92  (68)
+GF(p^2) div:                7902.15  (36)
+GF(p^2) legendre:           6768.93  (9)
+GF(p^2) sqrt:              39116.40  (136)
+GF(p^2) 248-chain:       9227386.20  (226)
+```
+
+### Using specialised sums of products
+
+```
+GF(p^2) add:                  16.57  (246)
+GF(p^2) sub:                  12.03  (249)
+GF(p^2) mul_small:            88.96  (29)
+GF(p^2) mul:                 159.18  (57)
+GF(p^2) square:              110.96  (229)
+GF(p^2) div:                7953.85  (244)
+GF(p^2) legendre:           6796.14  (80)
+GF(p^2) sqrt:              39142.80  (87)
+GF(p^2) 248-chain:       8983611.10  (97)
+```
+
+## SQIsign (Pure Rust)
+
+### Using generic arithmetic
+
+```
+GF(p^2) add:                  20.80  (31)
+GF(p^2) sub:                  18.75  (200)
+GF(p^2) mul_small:            43.21  (235)
+GF(p^2) mul:                 174.81  (238)
+GF(p^2) square:              104.15  (113)
+GF(p^2) div:                8031.37  (3)
+GF(p^2) legendre:           6745.70  (186)
+GF(p^2) sqrt:              31782.20  (196)
+GF(p^2) 248-chain:       9708372.80  (215)
+```
+
+### Using specialised sums of products
+
+```
+GF(p^2) add:                  19.01  (78)
+GF(p^2) sub:                  18.75  (228)
+GF(p^2) mul_small:            43.27  (210)
+GF(p^2) mul:                 165.07  (168)
+GF(p^2) square:              114.41  (86)
+GF(p^2) div:                8028.10  (2)
+GF(p^2) legendre:           6744.22  (41)
+GF(p^2) sqrt:              31357.20  (182)
+GF(p^2) 248-chain:       9554719.80  (204)
+```
+
+## SQIsign (ASM calls with extern)
+
+### Using generic arithmetic
+
+```
+GF(p^2) add:                  20.53  (242)
+GF(p^2) sub:                  18.88  (103)
+GF(p^2) mul_small:            43.23  (29)
+GF(p^2) mul:                 166.64  (75)
+GF(p^2) square:               89.46  (136)
+GF(p^2) div:                8039.99  (38)
+GF(p^2) legendre:           6903.55  (24)
+GF(p^2) sqrt:              33065.90  (127)
+GF(p^2) 248-chain:       9271631.90  (244)
+```
+
+### Using specialised sums of products
+
+```
+GF(p^2) add:                  19.03  (230)
+GF(p^2) sub:                  18.75  (85)
+GF(p^2) mul_small:            43.20  (51)
+GF(p^2) mul:                 147.37  (78)
+GF(p^2) square:              128.35  (48)
+GF(p^2) div:                8033.85  (200)
+GF(p^2) legendre:           6919.48  (103)
+GF(p^2) sqrt:              32429.70  (174)
+GF(p^2) 248-chain:       8544305.60  (62)
+```
+
+## SQIsign (ASM calls with inline `asm!`)
+
+### Using generic arithmetic
+
+```
+GF(p^2) add:                  20.82  (255)
+GF(p^2) sub:                  18.76  (89)
+GF(p^2) mul_small:            43.21  (250)
+GF(p^2) mul:                 152.39  (183)
+GF(p^2) square:               83.04  (197)
+GF(p^2) div:                8011.91  (107)
+GF(p^2) legendre:           6886.89  (176)
+GF(p^2) sqrt:              35031.40  (179)
+GF(p^2) 248-chain:       8697394.30  (227)
+```
+
+### Using specialised sums of products
+
+This is not yet implemented, as we need to have inlined versions of these functions
