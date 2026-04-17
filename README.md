@@ -52,6 +52,7 @@ RUSTFLAGS="-C target-cpu=native" cargo bench --features asm-inline
 
 ## fp2 crate
 
+```
 GF(p) add:                     9.51  (129)
 GF(p) sub:                     6.97  (56)
 GF(p) mul_small:              48.35  (197)
@@ -63,6 +64,7 @@ GF(p) div:                  7403.86  (208)
 GF(p) legendre:             6675.56  (248)
 GF(p) sqrt:                12234.80  (120)
 GF(p) 248-chain:         2912838.40  (119)
+```
 
 ## SQIsign (Pure Rust)
 
