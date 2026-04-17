@@ -38,7 +38,7 @@ RUSTFLAGS="-C target-cpu=native" cargo bench
 To compare generated generic Fq arithmetic using extern calls to ASM run
 
 ```
-RUSTFLAGS="-C target-cpu=native" cargo bench
+RUSTFLAGS="-C target-cpu=native" cargo bench --features asm
 ```
 
 ### Inlined ASM Calls
@@ -46,7 +46,7 @@ RUSTFLAGS="-C target-cpu=native" cargo bench
 To compare generated generic Fq arithmetic using inlined calls to ASM run
 
 ```
-RUSTFLAGS="-C target-cpu=native" cargo bench
+RUSTFLAGS="-C target-cpu=native" cargo bench --features asm-inline
 ```
 
 
