@@ -165,15 +165,15 @@ GF(p^2) 248-chain:       9271631.90  (244)
 ### Using specialised sums of products
 
 ```
-GF(p^2) add:                  19.03  (230)
-GF(p^2) sub:                  18.75  (85)
-GF(p^2) mul_small:            43.20  (51)
-GF(p^2) mul:                 147.37  (78)
-GF(p^2) square:              128.35  (48)
-GF(p^2) div:                8033.85  (200)
-GF(p^2) legendre:           6919.48  (103)
-GF(p^2) sqrt:              32429.70  (174)
-GF(p^2) 248-chain:       8544305.60  (62)
+GF(p^2) add:                  20.51  (163)
+GF(p^2) sub:                  18.66  (194)
+GF(p^2) mul_small:            43.12  (19)
+GF(p^2) mul:                 147.42  (164)
+GF(p^2) square:               89.19  (2)
+GF(p^2) div:                8007.22  (74)
+GF(p^2) legendre:           6895.92  (91)
+GF(p^2) sqrt:              32269.10  (151)
+GF(p^2) 248-chain:       8204013.90  (177)
 ```
 
 ## SQIsign (ASM calls with inline `asm!`)
@@ -194,4 +194,16 @@ GF(p^2) 248-chain:       8697394.30  (227)
 
 ### Using specialised sums of products
 
-This is not yet implemented, as we need to have inlined versions of these functions
+This is not yet fully implemented, as we need to have inlined versions of some functions
+
+```
+GF(p^2) add:                  20.52  (103)
+GF(p^2) sub:                  18.56  (215)
+GF(p^2) mul_small:            43.22  (24)
+GF(p^2) mul:                 148.38  (162)
+GF(p^2) square:               82.93  (126)
+GF(p^2) div:                8030.08  (39)
+GF(p^2) legendre:           6897.80  (245)
+GF(p^2) sqrt:              34030.00  (253)
+GF(p^2) 248-chain:       7916787.60  (142)
+```

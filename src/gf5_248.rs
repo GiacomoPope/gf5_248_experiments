@@ -7,6 +7,8 @@ use fp2::utils64::{
 
 #[cfg(all(target_arch = "x86_64", feature = "asm-inline", not(feature = "asm")))]
 use std::arch::asm;
+
+#[cfg(all(target_arch = "x86_64", feature = "asm-inline", not(feature = "asm")))]
 const P_PLUS_1_HI: u64 = 0x0500_0000_0000_0000;
 
 #[cfg(all(target_arch = "x86_64", feature = "asm"))]
@@ -15,8 +17,6 @@ unsafe extern "C" {
     unsafe fn fp_sqr_asm(dst: *mut GF5_248, a: *const GF5_248);
     unsafe fn fp_sop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_dop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
-    unsafe fn fp2_sqr_re_asm(dst: *mut GF5_248, a: *const GF5_248);
-    unsafe fn fp2_sqr_im_asm(dst: *mut GF5_248, a: *const GF5_248);
 }
 
 // TODO: write inline versions of these
@@ -24,8 +24,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     unsafe fn fp_sop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_dop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
-    unsafe fn fp2_sqr_re_asm(dst: *mut GF5_248, a: *const GF5_248);
-    unsafe fn fp2_sqr_im_asm(dst: *mut GF5_248, a: *const GF5_248);
 }
 
 #[repr(C)]
@@ -1138,41 +1136,6 @@ impl GF5_248 {
     pub fn difference_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
         let b2_minus = b2.neg();
         Self::sum_of_products(a1, b1, a2, &b2_minus)
-    }
-
-    // TODO: add an inline version of this
-    #[cfg(any(feature = "asm", feature = "asm-inline"))]
-    #[inline(always)]
-    pub fn fp2_sq_re(x0: &Self, x1: &Self) -> Self {
-        let mut u = Self::ZERO;
-        let a = [*x0, *x1];
-        unsafe { fp2_sqr_re_asm(&mut u, a.as_ptr()) }
-        u
-    }
-
-    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
-    #[inline(always)]
-    // TODO: optimise?
-    pub fn fp2_sq_re(x0: &Self, x1: &Self) -> Self {
-        (x0 - x1) * (x0 + x1)
-    }
-
-    // TODO: add an inline version of this
-    // TODO: this has some bug, there's a segfault... Track it down later
-    // #[cfg(any(feature = "asm", feature = "asm-inline"))]
-    // #[inline(always)]
-    // pub fn fp2_sq_im(x0: &Self, x1: &Self) -> Self {
-    //     let mut u = Self::ZERO;
-    //     let a = [*x0, *x1];
-    //     unsafe { fp2_sqr_im_asm(&mut u, a.as_ptr()) }
-    //     u
-    // }
-
-    // #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
-    // #[inline(always)]
-    // TODO: optimise?
-    pub fn fp2_sq_im(x0: &Self, x1: &Self) -> Self {
-        (x0 * x1).mul2()
     }
 
     // Ensure that the internal encoding of this value is in the 0..q-1

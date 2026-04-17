@@ -1,10 +1,6 @@
-#![allow(dead_code)]
-
 #[cfg(all(feature = "asm", feature = "asm-inline"))]
 compile_error!("features 'asm' and 'asm-inline' are mutually exclusive");
 
-pub mod fp2_gen;
-pub mod fp_gen;
 pub mod gf5_248;
 pub mod isogeny_chain;
 pub mod utils64;
@@ -17,7 +13,7 @@ const MODULUS: [u64; 4] = [
     0xFFFFFFFFFFFFFFFF,
     0x04FFFFFFFFFFFFFF,
 ];
-crate::define_fp_core!(typename = FpGen, modulus = MODULUS,);
+fp2::define_fp_core!(typename = FpGen, modulus = MODULUS,);
 
 #[cfg(test)]
 mod test_sqisign_i_arithmetic {
@@ -38,7 +34,7 @@ mod test_gen_fp2_with_sop {
     use super::FpGen;
     use super::MODULUS;
 
-    crate::define_fp2_from_type!(
+    fp2::define_fp2_from_type!(
         typename = Fp2Gen,
         base_field = FpGen,
         use_sum_of_products = true,
@@ -51,7 +47,7 @@ mod test_gen_fp2_without_sop {
     use super::FpGen;
     use super::MODULUS;
 
-    crate::define_fp2_from_type!(
+    fp2::define_fp2_from_type!(
         typename = Fp2Gen,
         base_field = FpGen,
         use_sum_of_products = false,
@@ -64,7 +60,7 @@ mod test_specific_fp2_with_sop {
     use super::MODULUS;
     use crate::gf5_248::GF5_248;
 
-    crate::define_fp2_from_type!(
+    fp2::define_fp2_from_type!(
         typename = Fp2Spec,
         base_field = GF5_248,
         use_sum_of_products = true,
@@ -77,7 +73,7 @@ mod test_specific_fp2_without_sop {
     use super::MODULUS;
     use crate::gf5_248::GF5_248;
 
-    crate::define_fp2_from_type!(
+    fp2::define_fp2_from_type!(
         typename = Fp2Spec,
         base_field = GF5_248,
         use_sum_of_products = false,
