@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
+default = []
 asm = []
+asm-inline = []
 
 [dependencies]
 fp2 = "0.4.2"

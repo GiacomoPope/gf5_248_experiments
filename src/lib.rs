@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+#[cfg(all(feature = "asm", feature = "asm-inline"))]
+compile_error!("features 'asm' and 'asm-inline' are mutually exclusive");
+
 pub mod fp2_gen;
 pub mod fp_gen;
 pub mod gf5_248;

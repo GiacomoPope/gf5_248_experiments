@@ -5,8 +5,10 @@ use fp2::utils64::{
     addcarry_u64, lzcnt, sgnw, subborrow_u64, umull, umull_add, umull_x2, umull_x2_add,
 };
 
-#[cfg(all(target_arch = "x86_64", feature = "asm"))]
+#[cfg(all(target_arch = "x86_64", feature = "asm-inline", not(feature = "asm")))]
 use std::arch::asm;
+const P_PLUS_1_HI: u64 = 0x0500_0000_0000_0000;
+
 #[cfg(all(target_arch = "x86_64", feature = "asm"))]
 unsafe extern "C" {
     unsafe fn fp_mul_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
@@ -17,8 +19,15 @@ unsafe extern "C" {
     unsafe fn fp2_sqr_im_asm(dst: *mut GF5_248, a: *const GF5_248);
 }
 
-#[cfg(all(target_arch = "x86_64", feature = "asm"))]
-const P_PLUS_1_HI: u64 = 0x0500_0000_0000_0000;
+// TODO: write inline versions of these
+#[cfg(all(target_arch = "x86_64", feature = "asm-inline"))]
+unsafe extern "C" {
+    unsafe fn fp_sop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
+    unsafe fn fp_dop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
+    unsafe fn fp2_sqr_re_asm(dst: *mut GF5_248, a: *const GF5_248);
+    unsafe fn fp2_sqr_im_asm(dst: *mut GF5_248, a: *const GF5_248);
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct GF5_248([u64; 4]);
@@ -545,7 +554,13 @@ impl GF5_248 {
         self.0[3] = d3 & w;
     }
 
-    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+    #[cfg(all(target_arch = "x86_64", feature = "asm", not(feature = "asm-inline")))]
+    #[inline(always)]
+    pub fn set_mul(&mut self, rhs: &Self) {
+        unsafe { fp_mul_asm(self, self, rhs) }
+    }
+
+    #[cfg(all(target_arch = "x86_64", feature = "asm-inline"))]
     #[inline(always)]
     pub fn set_mul(&mut self, rhs: &Self) {
         let (o0, o1, o2, o3): (u64, u64, u64, u64);
@@ -651,7 +666,7 @@ impl GF5_248 {
         self.0[3] = o3;
     }
 
-    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
     #[inline(always)]
     fn set_mul(&mut self, rhs: &Self) {
         let (a0, a1, a2, a3) = (self.0[0], self.0[1], self.0[2], self.0[3]);
@@ -760,7 +775,13 @@ impl GF5_248 {
         self.0[3] = d3;
     }
 
-    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+    #[cfg(all(target_arch = "x86_64", feature = "asm", not(feature = "asm-inline")))]
+    #[inline(always)]
+    pub fn set_square(&mut self) {
+        unsafe { fp_sqr_asm(self, self) }
+    }
+
+    #[cfg(all(target_arch = "x86_64", feature = "asm-inline"))]
     #[inline(always)]
     pub fn set_square(&mut self) {
         let (o0, o1, o2, o3): (u64, u64, u64, u64);
@@ -860,7 +881,7 @@ impl GF5_248 {
         self.0[3] = o3;
     }
 
-    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
     #[inline(always)]
     pub fn set_square(&mut self) {
         let (a0, a1, a2, a3) = (self.0[0], self.0[1], self.0[2], self.0[3]);
@@ -968,7 +989,18 @@ impl GF5_248 {
         r
     }
 
-    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    // TODO: add an inline version of this
+    #[cfg(any(feature = "asm", feature = "asm-inline"))]
+    #[inline(always)]
+    pub fn sum_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
+        let mut u = Self::ZERO;
+        let a = [*a2, *a1];
+        let b = [*b1, *b2];
+        unsafe { fp_sop_asm(&mut u, a.as_ptr(), b.as_ptr()) }
+        u
+    }
+
+    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
     #[inline(always)]
     fn sum_of_products_u64(a1: u64, b1: u64, a2: u64, b2: u64, c: u8) -> (u64, u64, u8) {
         let (lo1, hi1) = umull(a1, b1);
@@ -979,17 +1011,7 @@ impl GF5_248 {
         (lo, hi, tt)
     }
 
-    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
-    #[inline(always)]
-    pub fn sum_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
-        let mut u = Self::ZERO;
-        let a = [*a2, *a1];
-        let b = [*b1, *b2];
-        unsafe { fp_sop_asm(&mut u, a.as_ptr(), b.as_ptr()) }
-        u
-    }
-
-    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
     #[inline(always)]
     pub fn sum_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
         let (a10, a11, a12, a13) = (a1.0[0], a1.0[1], a1.0[2], a1.0[3]);
@@ -1100,7 +1122,8 @@ impl GF5_248 {
         r
     }
 
-    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+    // TODO: add an inline version of this
+    #[cfg(any(feature = "asm", feature = "asm-inline"))]
     #[inline(always)]
     pub fn difference_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
         let mut u = Self::ZERO;
@@ -1110,14 +1133,15 @@ impl GF5_248 {
         u
     }
 
-    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
     #[inline(always)]
     pub fn difference_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
         let b2_minus = b2.neg();
         Self::sum_of_products(a1, b1, a2, &b2_minus)
     }
 
-    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+    // TODO: add an inline version of this
+    #[cfg(any(feature = "asm", feature = "asm-inline"))]
     #[inline(always)]
     pub fn fp2_sq_re(x0: &Self, x1: &Self) -> Self {
         let mut u = Self::ZERO;
@@ -1126,14 +1150,15 @@ impl GF5_248 {
         u
     }
 
-    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
     #[inline(always)]
     // TODO: optimise?
     pub fn fp2_sq_re(x0: &Self, x1: &Self) -> Self {
         (x0 - x1) * (x0 + x1)
     }
 
-    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+    // TODO: add an inline version of this
+    #[cfg(any(feature = "asm", feature = "asm-inline"))]
     #[inline(always)]
     pub fn fp2_sq_im(x0: &Self, x1: &Self) -> Self {
         let mut u = Self::ZERO;
@@ -1142,7 +1167,7 @@ impl GF5_248 {
         u
     }
 
-    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
     #[inline(always)]
     // TODO: optimise?
     pub fn fp2_sq_im(x0: &Self, x1: &Self) -> Self {
