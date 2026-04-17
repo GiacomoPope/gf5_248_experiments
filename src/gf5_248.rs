@@ -19,13 +19,6 @@ unsafe extern "C" {
     unsafe fn fp_dop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
 }
 
-// TODO: write inline versions of these
-#[cfg(all(target_arch = "x86_64", feature = "asm-inline"))]
-unsafe extern "C" {
-    unsafe fn fp_sop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
-    unsafe fn fp_dop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
-}
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct GF5_248([u64; 4]);
@@ -987,8 +980,7 @@ impl GF5_248 {
         r
     }
 
-    // TODO: add an inline version of this
-    #[cfg(any(feature = "asm", feature = "asm-inline"))]
+    #[cfg(all(target_arch = "x86_64", feature = "asm", not(feature = "asm-inline")))]
     #[inline(always)]
     pub fn sum_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
         let mut u = Self::ZERO;
@@ -996,6 +988,171 @@ impl GF5_248 {
         let b = [*b1, *b2];
         unsafe { fp_sop_asm(&mut u, a.as_ptr(), b.as_ptr()) }
         u
+    }
+
+    #[cfg(all(target_arch = "x86_64", feature = "asm-inline"))]
+    #[inline(always)]
+    pub fn sum_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
+        let mut u = Self::ZERO;
+        {
+            let (o0, o1, o2, o3): (u64, u64, u64, u64);
+            unsafe {
+                asm!(
+                    "mov  r15, {pp1}",
+                    "mov  rdx, [{b1}]",
+                    "mulx r9, r8, [{a1}]",
+                    "xor  eax, eax",
+                    "mulx r10, r11, [{a1}+8]",
+                    "adox r9, r11",
+                    "mulx r11, r12, [{a1}+16]",
+                    "adox r10, r12",
+                    "mulx r12, r13, [{a1}+24]",
+                    "adox r11, r13",
+                    "adox r12, rax",
+                    "mov  rdx, [{b2}]",
+                    "mulx r13, r14, [{a2}]",
+                    "xor  eax, eax",
+                    "adox r8, r14",
+                    "adox r9, r13",
+                    "mulx r13, r14, [{a2}+8]",
+                    "adcx r9, r14",
+                    "adox r10, r13",
+                    "mulx r13, r14, [{a2}+16]",
+                    "adcx r10, r14",
+                    "adox r11, r13",
+                    "mulx r13, r14, [{a2}+24]",
+                    "adcx r11, r14",
+                    "adox r12, r13",
+                    "adc  r12, 0",
+                    "mov  rdx, r8",
+                    "mulx r13, r14, r15",
+                    "xor  eax, eax",
+                    "adox r11, r14",
+                    "adox r12, r13",
+                    "mov  rdx, [{b1}+8]",
+                    "mulx r13, r14, [{a1}]",
+                    "xor  r8d, r8d",
+                    "adox r9, r14",
+                    "adox r10, r13",
+                    "mulx r13, r14, [{a1}+8]",
+                    "adcx r10, r14",
+                    "adox r11, r13",
+                    "mulx r13, r14, [{a1}+16]",
+                    "adcx r11, r14",
+                    "adox r12, r13",
+                    "mulx r13, r14, [{a1}+24]",
+                    "adcx r12, r14",
+                    "adox r8, r13",
+                    "adc  r8, 0",
+                    "mov  rdx, [{b2}+8]",
+                    "mulx r13, r14, [{a2}]",
+                    "xor  eax, eax",
+                    "adox r9, r14",
+                    "adox r10, r13",
+                    "mulx r13, r14, [{a2}+8]",
+                    "adcx r10, r14",
+                    "adox r11, r13",
+                    "mulx r13, r14, [{a2}+16]",
+                    "adcx r11, r14",
+                    "adox r12, r13",
+                    "mulx r13, r14, [{a2}+24]",
+                    "adcx r12, r14",
+                    "adox r8, r13",
+                    "adc  r8, 0",
+                    "mov  rdx, r9",
+                    "mulx r13, r14, r15",
+                    "xor  eax, eax",
+                    "adox r12, r14",
+                    "adox r8, r13",
+                    "mov  rdx, [{b1}+16]",
+                    "mulx r13, r14, [{a1}]",
+                    "xor  r9d, r9d",
+                    "adox r10, r14",
+                    "adox r11, r13",
+                    "mulx r13, r14, [{a1}+8]",
+                    "adcx r11, r14",
+                    "adox r12, r13",
+                    "mulx r13, r14, [{a1}+16]",
+                    "adcx r12, r14",
+                    "adox r8, r13",
+                    "mulx r13, r14, [{a1}+24]",
+                    "adcx r8, r14",
+                    "adox r9, r13",
+                    "adc  r9, 0",
+                    "mov  rdx, [{b2}+16]",
+                    "mulx r13, r14, [{a2}]",
+                    "xor  eax, eax",
+                    "adox r10, r14",
+                    "adox r11, r13",
+                    "mulx r13, r14, [{a2}+8]",
+                    "adcx r11, r14",
+                    "adox r12, r13",
+                    "mulx r13, r14, [{a2}+16]",
+                    "adcx r12, r14",
+                    "adox r8, r13",
+                    "mulx r13, r14, [{a2}+24]",
+                    "adcx r8, r14",
+                    "adox r9, r13",
+                    "adc  r9, 0",
+                    "mov  rdx, r10",
+                    "mulx r13, r14, r15",
+                    "xor  eax, eax",
+                    "adox r8, r14",
+                    "adox r9, r13",
+                    "mov  rdx, [{b1}+24]",
+                    "mulx r13, r14, [{a1}]",
+                    "xor  r10d, r10d",
+                    "adox r11, r14",
+                    "adox r12, r13",
+                    "mulx r13, r14, [{a1}+8]",
+                    "adcx r12, r14",
+                    "adox r8, r13",
+                    "mulx r13, r14, [{a1}+16]",
+                    "adcx r8, r14",
+                    "adox r9, r13",
+                    "mulx r13, r14, [{a1}+24]",
+                    "adcx r9, r14",
+                    "adox r10, r13",
+                    "adc  r10, 0",
+                    "mov  rdx, [{b2}+24]",
+                    "mulx r13, r14, [{a2}]",
+                    "xor  eax, eax",
+                    "adox r11, r14",
+                    "adox r12, r13",
+                    "mulx r13, r14, [{a2}+8]",
+                    "adcx r12, r14",
+                    "adox r8, r13",
+                    "mulx r13, r14, [{a2}+16]",
+                    "adcx r8, r14",
+                    "adox r9, r13",
+                    "mulx r13, r14, [{a2}+24]",
+                    "adcx r9, r14",
+                    "adox r10, r13",
+                    "adc  r10, 0",
+                    "mov  rdx, r11",
+                    "mulx r13, r14, r15",
+                    "xor  eax, eax",
+                    "adox r9, r14",
+                    "adox r10, r13",
+
+                    a1 = in(reg) a1.0.as_ptr(),
+                    b1 = in(reg) b1.0.as_ptr(),
+                    a2 = in(reg) a2.0.as_ptr(),
+                    b2 = in(reg) b2.0.as_ptr(),
+                    pp1 = const P_PLUS_1_HI,
+                    out("rax") _, out("rdx") _,
+                    out("r8") o1, out("r9") o2, out("r10") o3, out("r11") _,
+                    out("r12") o0, out("r13") _, out("r14") _, out("r15") _,
+                    options(nostack, pure, readonly),
+                );
+            }
+            u.0[0] = o0;
+            u.0[1] = o1;
+            u.0[2] = o2;
+            u.0[3] = o3;
+
+            u
+        }
     }
 
     #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
@@ -1120,8 +1277,7 @@ impl GF5_248 {
         r
     }
 
-    // TODO: add an inline version of this
-    #[cfg(any(feature = "asm", feature = "asm-inline"))]
+    #[cfg(feature = "asm")]
     #[inline(always)]
     pub fn difference_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
         let mut u = Self::ZERO;
@@ -1131,7 +1287,8 @@ impl GF5_248 {
         u
     }
 
-    #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
+    // TODO: inline the substraction for this?
+    #[cfg(not(feature = "asm"))]
     #[inline(always)]
     pub fn difference_of_products(a1: &Self, b1: &Self, a2: &Self, b2: &Self) -> Self {
         let b2_minus = b2.neg();

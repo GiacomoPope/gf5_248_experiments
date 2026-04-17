@@ -194,16 +194,14 @@ GF(p^2) 248-chain:       8697394.30  (227)
 
 ### Using specialised sums of products
 
-This is not yet fully implemented, as we need to have inlined versions of some functions
-
 ```
-GF(p^2) add:                  20.52  (103)
-GF(p^2) sub:                  18.56  (215)
-GF(p^2) mul_small:            43.22  (24)
-GF(p^2) mul:                 148.38  (162)
-GF(p^2) square:               82.93  (126)
-GF(p^2) div:                8030.08  (39)
-GF(p^2) legendre:           6897.80  (245)
-GF(p^2) sqrt:              34030.00  (253)
-GF(p^2) 248-chain:       7916787.60  (142)
+GF(p^2) add:                  20.79  (122)
+GF(p^2) sub:                  18.75  (214)
+GF(p^2) mul_small:            43.28  (96)
+GF(p^2) mul:                 106.38  (38)
+GF(p^2) square:               82.77  (13)
+GF(p^2) div:                7949.31  (232)
+GF(p^2) legendre:           6880.58  (54)
+GF(p^2) sqrt:              33989.50  (191)
+GF(p^2) 248-chain:       7283241.00  (76)
 ```
