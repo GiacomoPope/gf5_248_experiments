@@ -9,8 +9,6 @@ use fp2::utils64::{
 use std::arch::asm;
 #[cfg(all(target_arch = "x86_64", feature = "asm"))]
 unsafe extern "C" {
-    unsafe fn fp_add_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
-    unsafe fn fp_sub_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_mul_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
     unsafe fn fp_sqr_asm(dst: *mut GF5_248, a: *const GF5_248);
     unsafe fn fp_sop_asm(dst: *mut GF5_248, a: *const GF5_248, b: *const GF5_248);
@@ -147,13 +145,6 @@ impl GF5_248 {
         r
     }
 
-    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
-    #[inline(always)]
-    fn set_add(&mut self, rhs: &Self) {
-        unsafe { fp_add_asm(self, self, rhs) }
-    }
-
-    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
     #[inline(always)]
     fn set_add(&mut self, rhs: &Self) {
         // Raw addition.
@@ -185,13 +176,6 @@ impl GF5_248 {
         self.0[3] = d3;
     }
 
-    #[cfg(all(target_arch = "x86_64", feature = "asm"))]
-    #[inline(always)]
-    fn set_sub(&mut self, rhs: &Self) {
-        unsafe { fp_sub_asm(self, self, rhs) }
-    }
-
-    #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
     #[inline(always)]
     fn set_sub(&mut self, rhs: &Self) {
         // Raw subtraction.
@@ -658,7 +642,7 @@ impl GF5_248 {
                 out("rax") _, out("rdx") _,
                 out("r8") o1, out("r9") o2, out("r10") o3, out("r11") _,
                 out("r12") o0, out("r13") _, out("r14") _,
-                options(nostack, pure, readonly),
+                options(nostack),
             );
         }
         self.0[0] = o0;
@@ -867,7 +851,7 @@ impl GF5_248 {
                 out("r8") _, out("r9") _, out("r10") _,
                 out("r11") o0, out("r12") o1, out("r13") o2, out("r14") o3,
                 out("r15") _,
-                options(nostack, pure, readonly),
+                options(nostack),
             );
         }
         self.0[0] = o0;
