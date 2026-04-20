@@ -9,3 +9,4 @@ fp_macro::define_fp_bench!(GF5_248, "Benchmarking SQIsign impl with inlined asm"
 
 #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
 fp_macro::define_fp_bench!(GF5_248, "Benchmarking SQIsign impl pure rust");
+
