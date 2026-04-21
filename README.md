@@ -101,17 +101,17 @@ GF(p) 248-chain:         2635559.40  (248)
 ## SQIsign (ASM calls with inline `asm!`)
 
 ```
-GF(p) add:                    13.52  (112)
-GF(p) sub:                    13.95  (74)
-GF(p) mul_small:              29.56  (246)
-GF(p) mul:                    30.57  (200)
-GF(p) square:                 32.30  (8)
-GF(p) sop:                    50.32  (30)
-GF(p) sop:                    53.73  (230)
-GF(p) div:                  7519.74  (113)
-GF(p) legendre:             6678.94  (101)
-GF(p) sqrt:                 8083.50  (218)
-GF(p) 248-chain:         2443344.50  (57)
+GF(p) add:                    13.51  (191)
+GF(p) sub:                    13.82  (182)
+GF(p) mul_small:              31.14  (225)
+GF(p) mul:                    30.43  (87)
+GF(p) square:                 28.63  (155)
+GF(p) sop:                    49.62  (225)
+GF(p) sop:                    54.08  (207)
+GF(p) div:                  7555.62  (127)
+GF(p) legendre:             6657.73  (122)
+GF(p) sqrt:                 7447.70  (0)
+GF(p) 248-chain:         2352286.30  (165)
 ```
 
 # Benchmarking GF(p^2) Arithmetic

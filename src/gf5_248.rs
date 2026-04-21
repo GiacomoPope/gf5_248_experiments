@@ -557,7 +557,13 @@ impl GF5_248 {
         let (o0, o1, o2, o3): (u64, u64, u64, u64);
         unsafe {
             asm!(
-                // Row 0: z = a × b₀  → [r8:r12]
+                // Rather than compute the entire 512 bit product value and
+                // then reducing, we instead interleave the reduction by multiplying
+                // by a single word then reducing.
+                // The idea is that because p + 1 is a large multiple of 2^n, we need
+                // only four xmul for the full reduction which we do in four parts.
+
+                // Row 0: z = a x b0 into [r8:r12]
                 "mov  rdx, [{b}]",
                 "mulx r9, r8, [{a}]",
                 "xor  rax, rax",
@@ -569,13 +575,14 @@ impl GF5_248 {
                 "adox r11, r13",
                 "adox r12, rax",
 
-                // ---- reduce₀ ----
+                // Single reduction step
                 "mov  rdx, r8",
                 "mulx r13, r14, {pp1}",
                 "xor  rax, rax",
                 "adox r11, r14",
                 "adox r12, r13",
-                // ---- row 1 into [r9:r12,r8] ----
+
+                // Row 1: z = a x b1 into  [r9:r12,r8]
                 "mov  rdx, [{b}+8]",
                 "mulx r13, r14, [{a}]",
                 "xor  r8, r8",
@@ -591,13 +598,15 @@ impl GF5_248 {
                 "adcx r12, r14",
                 "adox r8, r13",
                 "adc  r8, 0",
-                // ---- reduce₁ ----
+
+                // Single reduction step
                 "mov  rdx, r9",
                 "mulx r13, r14, {pp1}",
                 "xor  rax, rax",
                 "adox r12, r14",
                 "adox r8, r13",
-                // ---- row 2 into [r10:r12,r8,r9] ----
+
+                // Row 2: z = a x b2 into [r10:r12,r8,r9]
                 "mov  rdx, [{b}+16]",
                 "mulx r13, r14, [{a}]",
                 "xor  r9, r9",
@@ -613,13 +622,15 @@ impl GF5_248 {
                 "adcx r8, r14",
                 "adox r9, r13",
                 "adc  r9, 0",
-                // ---- reduce₂ ----
+
+                // Single reduction step
                 "mov  rdx, r10",
                 "mulx r13, r14, {pp1}",
                 "xor  rax, rax",
                 "adox r8, r14",
                 "adox r9, r13",
-                // ---- row 3 into [r11:r12,r8,r9,r10] ----
+
+                // Row 3: z = a x b3 into [r11:r12,r8,r9,r10]
                 "mov  rdx, [{b}+24]",
                 "mulx r13, r14, [{a}]",
                 "xor  r10, r10",
@@ -635,7 +646,8 @@ impl GF5_248 {
                 "adcx r9, r14",
                 "adox r10, r13",
                 "adc  r10, 0",
-                // ---- reduce₃ ----
+
+                // Single reduction step
                 "mov  rdx, r11",
                 "mulx r13, r14, {pp1}",
                 "xor  rax, rax",
@@ -772,103 +784,119 @@ impl GF5_248 {
         unsafe { fp_sqr_asm(self, self) }
     }
 
-    #[cfg(all(target_arch = "x86_64", feature = "asm-inline"))]
-    #[inline(always)]
     pub fn set_square(&mut self) {
         let (o0, o1, o2, o3): (u64, u64, u64, u64);
         unsafe {
             asm!(
-                // Row 0: z = a × b₀  → [r8:r12]
-                "mov  rdx, [{b}]",
-                "mulx r9, r8, [{a}]",
-                "xor  rax, rax",
-                "mulx r10, r11, [{a}+8]",
-                "adox r9, r11",
-                "mulx r11, r12, [{a}+16]",
-                "adox r10, r12",
-                "mulx r12, r13, [{a}+24]",
-                "adox r11, r13",
-                "adox r12, rax",
+                // First we compute the full 512 bit value into r8..r15
+                // We start with non-square products, which we then double
+                // and add the diagonal ai^2 elements in at the end
+                //   a0*a1            * 2^64
+                //   a0*a2            * 2^128
+                //   (a0*a3 + a1*a2)  * 2^192
+                //   a1*a3            * 2^256
+                //   a2*a3            * 2^320
 
-                // ---- reduce₀ ----
-                "mov  rdx, r8",
-                "mulx r13, r14, {pp1}",
-                "xor  rax, rax",
+
+
+                // Multiplication with mulx requires on of the values
+                // to be in rdx, first move a0 in for three of these.
+                "mov rdx, [{a}]",
+                "xor r15d, r15d", // clear r15 as well as CF and OF
+
+                // a0*a1 into r9:r10
+                // a0*a2 into r10:r11
+                // a0*a3 into r11:r12
+                "mulx r10, r9, [{a} + 8]",
+                "mulx r11, r13, [{a} + 16]",
+                "mulx r12, r14, [{a} + 24]",
+                "adcx r10, r13",
                 "adox r11, r14",
-                "adox r12, r13",
-                // ---- row 1 into [r9:r12,r8] ----
-                "mov  rdx, [{b}+8]",
-                "mulx r13, r14, [{a}]",
-                "xor  r8, r8",
-                "adox r9, r14",
-                "adox r10, r13",
-                "mulx r13, r14, [{a}+8]",
-                "adcx r10, r14",
-                "adox r11, r13",
-                "mulx r13, r14, [{a}+16]",
-                "adcx r11, r14",
-                "adox r12, r13",
-                "mulx r13, r14, [{a}+24]",
-                "adcx r12, r14",
-                "adox r8, r13",
-                "adc  r8, 0",
-                // ---- reduce₁ ----
-                "mov  rdx, r9",
-                "mulx r13, r14, {pp1}",
-                "xor  rax, rax",
-                "adox r12, r14",
-                "adox r8, r13",
-                // ---- row 2 into [r10:r12,r8,r9] ----
-                "mov  rdx, [{b}+16]",
-                "mulx r13, r14, [{a}]",
-                "xor  r9, r9",
-                "adox r10, r14",
-                "adox r11, r13",
-                "mulx r13, r14, [{a}+8]",
-                "adcx r11, r14",
-                "adox r12, r13",
-                "mulx r13, r14, [{a}+16]",
-                "adcx r12, r14",
-                "adox r8, r13",
-                "mulx r13, r14, [{a}+24]",
-                "adcx r8, r14",
-                "adox r9, r13",
-                "adc  r9, 0",
-                // ---- reduce₂ ----
-                "mov  rdx, r10",
-                "mulx r13, r14, {pp1}",
-                "xor  rax, rax",
-                "adox r8, r14",
-                "adox r9, r13",
-                // ---- row 3 into [r11:r12,r8,r9,r10] ----
-                "mov  rdx, [{b}+24]",
-                "mulx r13, r14, [{a}]",
-                "xor  r10, r10",
-                "adox r11, r14",
-                "adox r12, r13",
-                "mulx r13, r14, [{a}+8]",
-                "adcx r12, r14",
-                "adox r8, r13",
-                "mulx r13, r14, [{a}+16]",
-                "adcx r8, r14",
-                "adox r9, r13",
-                "mulx r13, r14, [{a}+24]",
-                "adcx r9, r14",
-                "adox r10, r13",
-                "adc  r10, 0",
-                // ---- reduce₃ ----
-                "mov  rdx, r11",
-                "mulx r13, r14, {pp1}",
-                "xor  rax, rax",
-                "adox r9, r14",
-                "adox r10, r13",
+
+                // a1*a2 into r11:r12
+                // a1*a3 into r12:r13
+                "mov rdx, [{a} + 8]",
+                "mulx rsi, rax, [{a} + 16]",
+                "mulx r13, rcx, [{a} + 24]",
+                "adcx r11, rax",
+                "adox r12, rsi",
+                "adcx r12, rcx",
+
+                // a2*a3 into r13:r14
+                "mov rdx, [{a} + 16]",
+                "mulx r14, rax, [{a} + 24]",
+                "adox r13, rax",
+                "adcx r13, r15",
+                "adox r14, r15",
+                "adcx r14, r15",
+
+                // All cross products are in place, we now want
+                // to double them. We use shl/shld to avoid carry
+                // propagation delays
+                "shld r15, r14, 1",
+                "shld r14, r13, 1",
+                "shld r13, r12, 1",
+                "shld r12, r11, 1",
+                "shld r11, r10, 1",
+                "shld r10, r9, 1",
+                "add r9, r9",
+
+                // Clear CF and OF again, use r8 as it's not yet used
+                "xor r8d, r8d",
+
+                // Now add in the squares, use that we have a2 in rdx currently
+                // and store the result as tmp values
+                "mulx rsi, rax, rdx", // Compute and add in a0^2
+                "mov rdx, [{a}]",
+                "mulx rcx, r8, rdx",
+                "adcx r9, rcx",
+
+                "mov rdx, [{a} + 8]", // Compute and add in a1^2
+                "mulx rcx, rdx, rdx",
+                "adcx r10, rdx",
+                "adcx r11, rcx",
+                "adcx r12, rax", // Add in a2^2 from before
+                "adcx r13, rsi",
+
+                "mov rdx, [{a} + 24]", // Compute and add in a3^2
+                "mulx rsi, rax, rdx",
+                "adcx r14, rax",
+                "adcx r15, rsi",
+
+                // At this point we have a full product within r8..r15
+                // and we need to do a full Montgomery reduction.
+
+
+                // Montgomery reduction uses the top word of (p + 1)
+                // as a constant which we now move into rdx for four
+                // mulx calls
+                "mov  rdx, {pp1}",
+                "xor rax, rax",
+
+                // Mul by the bottom limb and propagate down four times
+                "mulx rcx, rsi, r8",
+                "adox  r11, rsi",
+                "adox  r12, rcx",
+
+                "mulx rcx, rsi, r9",
+                "adcx r12, rsi",
+                "adcx r13, rcx",
+
+                "mulx rcx, rsi, r10",
+                "adox r13, rsi",
+                "adox r14, rcx",
+
+                "mulx rcx, rsi, r11",
+                "adcx r14, rsi",
+                "adcx r15, rcx",
+                "adox r15, rax",
 
                 a = in(reg) self.0.as_ptr(),
-                b = in(reg) self.0.as_ptr(),
-                pp1 = in(reg) P_PLUS_1_HI,
-                out("rax") _, out("rdx") _,
-                out("r8") o1, out("r9") o2, out("r10") o3, out("r11") _,
-                out("r12") o0, out("r13") _, out("r14") _,
+                pp1 = const P_PLUS_1_HI,
+                out("rax") _, out("rcx") _, out("rdx") _,
+                out("r8") _, out("r9") _, out("r10") _,
+                out("r11") _, out("r12") o0, out("r13") o1, out("r14") o2,
+                out("r15") o3, out("rsi") _,
                 options(nostack),
             );
         }
@@ -877,103 +905,6 @@ impl GF5_248 {
         self.0[2] = o2;
         self.0[3] = o3;
     }
-
-    // This is slower than mul :(
-    // pub fn set_square(&mut self) {
-    //     let (o0, o1, o2, o3): (u64, u64, u64, u64);
-    //     unsafe {
-    //         asm!(
-    //             // ---- Phase 1a: off-diagonal products into e1..e6 = r8..r13 ----
-    //             "mov  rdx, [{a}]",
-    //             "mulx r9, r8, [{a}+8]",       // a0*a1 -> e1:e2
-    //             "mulx r11, r10, [{a}+24]",    // a0*a3 -> e3:e4
-    //             "mov  rdx, [{a}+16]",
-    //             "mulx r13, r12, [{a}+24]",    // a2*a3 -> e5:e6
-    //             "mulx rcx, rax, [{a}]",       // a2*a0
-    //             "add  r9,  rax",
-    //             "adc  r10, rcx",
-    //             "mov  rdx, [{a}+8]",
-    //             "mulx rcx, rax, [{a}+24]",    // a1*a3
-    //             "adc  r11, rax",
-    //             "adc  r12, rcx",
-    //             "adc  r13, 0",
-    //             "mulx rcx, rax, [{a}+16]",    // a1*a2 (rdx still a1)
-    //             "add  r10, rax",
-    //             "adc  r11, rcx",
-    //             "adc  r12, 0",
-    //             "adc  r13, 0",
-
-    //             // ---- Phase 1b: 2*(off-diag) + diag, ADCX doubles || ADOX diag ----
-    //             "xor  r15d, r15d",            // clear CF/OF; r15 overwritten next
-    //             "mov  rdx, [{a}]",
-    //             "mulx rax, r15, rdx",         // a0² -> e0=r15 : hi=rax
-    //             "adcx r8, r8",
-    //             "adox r8, rax",
-    //             "mov  rdx, [{a}+8]",
-    //             "mulx rcx, rax, rdx",         // a1²
-    //             "adcx r9, r9",
-    //             "adox r9, rax",
-    //             "adcx r10, r10",
-    //             "adox r10, rcx",
-    //             "mov  rdx, [{a}+16]",
-    //             "mulx rcx, rax, rdx",         // a2²
-    //             "adcx r11, r11",
-    //             "adox r11, rax",
-    //             "adcx r12, r12",
-    //             "adox r12, rcx",
-    //             "mov  rdx, [{a}+24]",
-    //             "mulx rcx, rax, rdx",         // a3²
-    //             "adcx r13, r13",
-    //             "adox r13, rax",
-    //             "mov  r14, 0",
-    //             "adcx r14, r14",
-    //             "adox r14, rcx",
-
-    //             // e[0..7] = r15, r8, r9, r10, r11, r12, r13, r14
-
-    //             // ---- Phase 2: 4-step Montgomery reduction ----
-    //             // Load (p+1)>>192 into r15 once e0 has been moved to rdx.
-    //             "mov  rdx, r15",
-    //             "mov  r15, {pp1}",
-    //             "mulx rcx, rax, r15",
-    //             "add  r10, rax",
-    //             "adc  r11, rcx",
-    //             "adc  r12, 0",
-    //             "adc  r13, 0",
-    //             "adc  r14, 0",
-
-    //             "mov  rdx, r8",
-    //             "mulx rcx, rax, r15",
-    //             "add  r11, rax",
-    //             "adc  r12, rcx",
-    //             "adc  r13, 0",
-    //             "adc  r14, 0",
-
-    //             "mov  rdx, r9",
-    //             "mulx rcx, rax, r15",
-    //             "add  r12, rax",
-    //             "adc  r13, rcx",
-    //             "adc  r14, 0",
-
-    //             "mov  rdx, r10",
-    //             "mulx rcx, rax, r15",
-    //             "add  r13, rax",
-    //             "adc  r14, rcx",
-
-    //             a = in(reg) self.0.as_ptr(),
-    //             pp1 = const P_PLUS_1_HI,
-    //             out("rax") _, out("rcx") _, out("rdx") _,
-    //             out("r8") _, out("r9") _, out("r10") _,
-    //             out("r11") o0, out("r12") o1, out("r13") o2, out("r14") o3,
-    //             out("r15") _,
-    //             options(nostack),
-    //         );
-    //     }
-    //     self.0[0] = o0;
-    //     self.0[1] = o1;
-    //     self.0[2] = o2;
-    //     self.0[3] = o3;
-    // }
 
     #[cfg(not(any(feature = "asm", feature = "asm-inline")))]
     #[inline(always)]

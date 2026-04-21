@@ -20,10 +20,10 @@ cc = "1"
 criterion = { version = "0.8" }
 num-bigint = "0.4.3"
 
-# [[bench]]
-# name = "bench_fp"
-# path = "benches/bench_fp.rs"
-# harness = false
+[[bench]]
+name = "bench_fp"
+path = "benches/bench_fp.rs"
+harness = false
 
 # [[bench]]
 # name = "bench_fp2"
@@ -40,7 +40,7 @@ num-bigint = "0.4.3"
 # path = "benches/bench_fp2_crate.rs"
 # harness = false
 
-[[bench]]
-name = "criterion_bench"
-path = "benches/criterion_bench.rs"
-harness = false
+# [[bench]]
+# name = "criterion_bench"
+# path = "benches/criterion_bench.rs"
+# harness = false
