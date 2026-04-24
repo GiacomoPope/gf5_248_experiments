@@ -582,7 +582,7 @@ impl GF5_248 {
                 "adox r11, r14",
                 "adox r12, r13",
 
-                // Row 1: z = a x b1 into  [r9:r12,r8]
+                // Row 1: z = a x b1 into  [r9:r12, r8]
                 "mov  rdx, [{b}+8]",
                 "mulx r13, r14, [{a}]",
                 "xor  r8, r8",
@@ -606,7 +606,7 @@ impl GF5_248 {
                 "adox r12, r14",
                 "adox r8, r13",
 
-                // Row 2: z = a x b2 into [r10:r12,r8,r9]
+                // Row 2: z = a x b2 into [r10:r12, r8, r9]
                 "mov  rdx, [{b}+16]",
                 "mulx r13, r14, [{a}]",
                 "xor  r9, r9",
@@ -630,7 +630,7 @@ impl GF5_248 {
                 "adox r8, r14",
                 "adox r9, r13",
 
-                // Row 3: z = a x b3 into [r11:r12,r8,r9,r10]
+                // Row 3: z = a x b3 into [r11:r12, r8, r9, r10]
                 "mov  rdx, [{b}+24]",
                 "mulx r13, r14, [{a}]",
                 "xor  r10, r10",
@@ -784,21 +784,11 @@ impl GF5_248 {
         unsafe { fp_sqr_asm(self, self) }
     }
 
+    #[cfg(all(target_arch = "x86_64", feature = "asm-inline"))]
     pub fn set_square(&mut self) {
         let (o0, o1, o2, o3): (u64, u64, u64, u64);
         unsafe {
             asm!(
-                // First we compute the full 512 bit value into r8..r15
-                // We start with non-square products, which we then double
-                // and add the diagonal ai^2 elements in at the end
-                //   a0*a1            * 2^64
-                //   a0*a2            * 2^128
-                //   (a0*a3 + a1*a2)  * 2^192
-                //   a1*a3            * 2^256
-                //   a2*a3            * 2^320
-
-
-
                 // Multiplication with mulx requires on of the values
                 // to be in rdx, first move a0 in for three of these.
                 "mov rdx, [{a}]",
@@ -863,15 +853,11 @@ impl GF5_248 {
                 "adcx r14, rax",
                 "adcx r15, rsi",
 
-                // At this point we have a full product within r8..r15
-                // and we need to do a full Montgomery reduction.
-
-
                 // Montgomery reduction uses the top word of (p + 1)
                 // as a constant which we now move into rdx for four
                 // mulx calls
                 "mov  rdx, {pp1}",
-                "xor rax, rax",
+                "xor rax, rax", // we use rax = 0 in the adox below
 
                 // Mul by the bottom limb and propagate down four times
                 "mulx rcx, rsi, r8",
@@ -914,7 +900,7 @@ impl GF5_248 {
         // 1. Non-square products. Max intermediate value:
         //   a0*a1            * 2^64
         //   a0*a2            * 2^128
-        //   (a0*a3 + a1*a2)  * 2^192
+        //   a0*a3 + a1*a2    * 2^192
         //   a1*a3            * 2^256
         //   a2*a3            * 2^320
         // for a total which is slightly below 2^448, which means that
